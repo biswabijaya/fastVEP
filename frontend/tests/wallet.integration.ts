@@ -132,18 +132,16 @@ test("verified annual payments are granted once, not as an upfront annual credit
     now = Date.now(),
     id = "fv-test-annual";
   await accountRef(u.uid).set(newAccount(u, now));
-  await database()
-    .collection("payments")
-    .doc(id)
-    .set({
-      id,
-      uid: u.uid,
-      cadence: "annual",
-      amount: 24000,
-      currency: "USD",
-      status: "pending",
-      createdAt: now,
-    });
+  await database().collection("payments").doc(id).set({
+    id,
+    uid: u.uid,
+    cadence: "annual",
+    amount: 90000,
+    displayAmount: 24000,
+    currency: "SAR",
+    status: "pending",
+    createdAt: now,
+  });
   const results = await Promise.all([
     applyCapturedInvoice(id, "123456789", now),
     applyCapturedInvoice(id, "123456789", now),
@@ -155,18 +153,16 @@ test("verified annual payments are granted once, not as an upfront annual credit
     /conflict/,
   );
   const duplicate = "fv-test-duplicate";
-  await database()
-    .collection("payments")
-    .doc(duplicate)
-    .set({
-      id: duplicate,
-      uid: u.uid,
-      cadence: "monthly",
-      amount: 2000,
-      currency: "USD",
-      status: "pending",
-      createdAt: now,
-    });
+  await database().collection("payments").doc(duplicate).set({
+    id: duplicate,
+    uid: u.uid,
+    cadence: "monthly",
+    amount: 7500,
+    displayAmount: 2000,
+    currency: "SAR",
+    status: "pending",
+    createdAt: now,
+  });
   await assert.rejects(
     applyCapturedInvoice(duplicate, "123456789", now),
     /already been assigned/,

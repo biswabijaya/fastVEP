@@ -1,3 +1,4 @@
+import { paymentPrice } from "./payment-pricing";
 import { randomUUID } from "node:crypto";
 import { accountRef, database } from "./admin";
 import { newAccount, type Account, type Identity } from "./wallet";
@@ -24,7 +25,9 @@ export type Invoice = {
   uid: string;
   cadence: Cadence;
   amount: number;
-  currency: "USD";
+  currency: "USD" | "SAR";
+  displayAmount?: number;
+  displayCurrency?: "USD";
   status: "pending" | "paid" | "refunded";
   createdAt: number;
   fortId?: string;
@@ -50,7 +53,11 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
     if (account.pendingInvoice) {
       const prior = await tx.get(invoices().doc(account.pendingInvoice));
       const previous = prior.data() as Invoice | undefined;
-      if (previous?.status === "pending" && previous.cadence === cadence)
+      if (
+        previous?.status === "pending" &&
+        previous.cadence === cadence &&
+        previous.currency === "SAR"
+      )
         return previous;
       if (
         previous?.status === "pending" &&
@@ -66,8 +73,7 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
         id,
         uid: user.uid,
         cadence,
-        amount: PLANS[cadence].dollars * 100,
-        currency: "USD",
+        ...paymentPrice(cadence),
         status: "pending",
         createdAt: Date.now(),
       };
@@ -85,7 +91,7 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
         command: "PURCHASE",
         merchant_reference: invoice.id,
         amount: String(invoice.amount),
-        currency: "USD",
+        currency: invoice.currency,
         customer_email: user.email,
         return_url: `${canonicalOrigin}/api/billing/callback`,
         order_description: `fastVEP Pro ${cadence} term - manual renewal`,
@@ -157,7 +163,7 @@ export async function applyCapturedInvoice(
       paymentId: id,
       cadence: invoice.cadence,
       amount: invoice.amount,
-      currency: "USD",
+      currency: invoice.currency,
       termStart: start,
       termEnd: entitlement.termEnd,
       at: now,

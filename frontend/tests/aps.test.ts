@@ -59,3 +59,54 @@ test("payment payloads reject nested values and preserve canonical scalar string
   });
   assert.throws(() => parseFields({ amount: { value: 2000 } }), /Invalid/);
 });
+
+test("SAR settlement preserves USD catalog prices and the exact captured charge", async () => {
+  const { paymentPrice, displayPayment } =
+    await import("../src/server/payment-pricing");
+  assert.deepEqual(paymentPrice("monthly"), {
+    amount: 7500,
+    currency: "SAR",
+    displayAmount: 2000,
+    displayCurrency: "USD",
+  });
+  assert.deepEqual(paymentPrice("annual"), {
+    amount: 90000,
+    currency: "SAR",
+    displayAmount: 24000,
+    displayCurrency: "USD",
+  });
+  assert.deepEqual(
+    displayPayment({ cadence: "monthly", ...paymentPrice("monthly") }),
+    { amount: 2000, currency: "USD" },
+  );
+  assert.deepEqual(
+    displayPayment({ cadence: "annual", amount: 24000, currency: "USD" }),
+    { amount: 24000, currency: "USD" },
+  );
+  assert.equal(
+    capturedPayment(
+      {
+        response_code: "12000",
+        transaction_code: "14000",
+        captured_amount: "7500",
+        refunded_amount: "0",
+        fort_id: "123",
+      },
+      7500,
+    ),
+    true,
+  );
+  assert.equal(
+    capturedPayment(
+      {
+        response_code: "12000",
+        transaction_code: "14000",
+        captured_amount: "2000",
+        refunded_amount: "0",
+        fort_id: "123",
+      },
+      7500,
+    ),
+    false,
+  );
+});

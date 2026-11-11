@@ -1,3 +1,5 @@
+import { displayPayment } from "../../../src/server/payment-pricing";
+import type { Invoice } from "../../../src/server/payments";
 import {
   accountRef,
   errorResponse,
@@ -26,12 +28,11 @@ export async function GET(request: Request) {
         account,
         jobs: jobs.docs.map((doc) => batchView(doc.data() as Batch)),
         payments: payments.docs.map((doc) => {
-          const p = doc.data();
+          const p = doc.data() as Invoice;
           return {
             id: p.id,
             cadence: p.cadence,
-            amount: p.amount,
-            currency: p.currency,
+            ...displayPayment(p),
             status: p.status,
             createdAt: p.createdAt,
             termEnd: p.termEnd || null,
