@@ -26,9 +26,28 @@ async function forward(
   try {
     if (Number(req.headers.get("content-length") || 0) > 1048576)
       return Response.json({ error: "Input exceeds 1 MiB" }, { status: 413 });
-    const body = req.method === "POST" ? await req.text() : undefined;
-    if (body && Buffer.byteLength(body) > 1048576)
-      return Response.json({ error: "Input exceeds 1 MiB" }, { status: 413 });
+    let body: string | undefined;
+    if (req.method === "POST") {
+      const reader = req.body?.getReader();
+      const chunks: Uint8Array[] = [];
+      let bytes = 0;
+      if (reader) {
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          bytes += chunk.value.byteLength;
+          if (bytes > 1048576) {
+            await reader.cancel();
+            return Response.json(
+              { error: "Input exceeds 1 MiB" },
+              { status: 413 },
+            );
+          }
+          chunks.push(chunk.value);
+        }
+      }
+      body = Buffer.concat(chunks).toString("utf8");
+    }
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -47,6 +66,15 @@ async function forward(
       cache: "no-store",
       signal: AbortSignal.timeout(95000),
     });
+    if (!response.headers.get("content-type")?.includes("application/json")) {
+      return Response.json(
+        {
+          error:
+            "The annotation service is being prepared. Please try again later.",
+        },
+        { status: 503 },
+      );
+    }
     return new Response(response.body, {
       status: response.status,
       headers: {
