@@ -1,6 +1,6 @@
 # fastVEP accounts, pricing and payment launch
 
-Confirmed terms (2026-11-11): $1 = 200 credits; Free has 200 credits per UTC day; Pro costs $20/month or $240/year, with 4,000 subscription credits released monthly. Annual billing has no discount at the requested exchange rate. Daily credits expire at 00:00 UTC. Subscription credits expire at each monthly allocation boundary; neither balance rolls over. Free credits are spent first and can combine with subscription credits. Credits are a service allowance, not redeemable cash.
+Confirmed terms (2026-11-11): $1 = 200 credits; Free has 200 credits per UTC day; Pro costs $20/month or $240/year, with 4,000 subscription credits released monthly. Annual billing has no discount at the requested exchange rate. Daily credits expire at 00:00 UTC. Monthly-plan credits expire at the end of the monthly term. Annual-plan credits are issued monthly and roll over until the annual term ends, when any remaining balance expires. Daily free credits do not roll over. Free credits are spent first and can combine with subscription credits. Credits are a service allowance, not redeemable cash.
 
 ## Annotation charge
 
@@ -59,3 +59,7 @@ Sources checked 2026-11-11:
 APS checkout submits SAR at the fixed 3.75 SAR/USD peg: $20 -> SAR 75.00 (7500 halalas), $240 -> SAR 900.00 (90000 halalas). Invoice records retain both settlement and display amounts. fastVEP pricing, credit values and payment history remain in USD. Signed checkout, callback validation, captured-amount checks, reconciliation and ledger entries use the invoice's actual settlement currency/amount. Existing USD invoices remain verifiable; pending USD invoices are not reused for new SAR checkouts. APS's own hosted payment page and the customer's bank may display the actual SAR charge; fastVEP does not control those screens.
 
 Exchange-rate source: https://www.sama.gov.sa/en-US/MediaCenter/News/Pages/news-557.aspx
+
+Annual rollover accounting tracks the number of monthly allocations already issued. Inactive months are credited on the next visit without issuing future months early or duplicating allocations. Annual refunds remain valid across monthly boundaries within the same annual term. The 85.05% monthly contribution-margin example is not an upper bound on a rollover user’s monthly cost: annual users may concentrate previously accumulated credits into a later month; evaluate their margin over the paid annual term.
+
+For an illustrative fully used 365-day annual account, 73,000 daily credits plus 48,000 annual-plan credits permit at most 806 minimum-fee batches in aggregate. At the same assumed $0.03/batch, illustrative 2.9% + $0.30 annual payment fee, and $1.20/year operational overhead, modeled cost is $32.64 on $240, or 86.4% annual contribution margin. Daily expiry can reduce actual usage; this remains a planning model, not a cost guarantee.

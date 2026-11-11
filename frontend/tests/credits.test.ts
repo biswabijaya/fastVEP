@@ -46,7 +46,7 @@ test("daily refresh expires unused credits without accumulating them", () => {
   assert.equal(normalizeWallet(wallet, now + 2000).dailyRemaining, units(200));
   assert.equal(walletView(wallet, now).dailyRefreshAt, Date.UTC(2026, 10, 12));
 });
-test("annual plans release credits monthly rather than upfront, with no rollover", () => {
+test("annual plans release credits monthly and preserve unused credits until term expiry", () => {
   const start = Date.UTC(2026, 0, 31, 14);
   const entitlement = {
     paymentId: "p",
@@ -56,11 +56,19 @@ test("annual plans release credits monthly rather than upfront, with no rollover
   };
   const wallet = normalizeWallet({ ...emptyWallet(start), entitlement }, start);
   assert.equal(wallet.paidRemaining, units(4000));
-  assert.equal(wallet.paidExpiresAt, Date.UTC(2026, 1, 28, 14));
+  assert.equal(wallet.paidExpiresAt, entitlement.termEnd);
   const spent = { ...wallet, paidRemaining: units(3000) };
   const feb = normalizeWallet(spent, Date.UTC(2026, 1, 28, 14));
-  assert.equal(feb.paidRemaining, units(4000));
-  assert.equal(feb.paidExpiresAt, Date.UTC(2026, 2, 31, 14));
+  assert.equal(feb.paidRemaining, units(7000));
+  assert.equal(
+    normalizeWallet(feb, Date.UTC(2026, 1, 28, 14)).paidRemaining,
+    units(7000),
+  );
+  assert.equal(
+    normalizeWallet(feb, Date.UTC(2026, 3, 30, 14)).paidRemaining,
+    units(15000),
+  );
+  assert.equal(feb.paidExpiresAt, entitlement.termEnd);
   assert.equal(normalizeWallet(feb, entitlement.termEnd).paidRemaining, 0);
 });
 test("refunds return only credits that have not expired", () => {
@@ -81,4 +89,73 @@ test("refunds return only credits that have not expired", () => {
     refundWallet(result.wallet, result.debit).paidRemaining,
     units(100),
   );
+});
+
+test("annual refunds survive monthly allocation boundaries but not annual expiry", () => {
+  const start = Date.UTC(2026, 0, 31, 14),
+    end = addMonths(start, 12);
+  const wallet = normalizeWallet(
+    {
+      ...emptyWallet(start),
+      dailyRemaining: 0,
+      entitlement: {
+        paymentId: "annual-refund",
+        cadence: "annual",
+        termStart: start,
+        termEnd: end,
+      },
+    },
+    start,
+  );
+  const spent = debitWallet(wallet, units(160));
+  const nextMonth = normalizeWallet(spent.wallet, addMonths(start, 1));
+  assert.equal(refundWallet(nextMonth, spent.debit).paidRemaining, units(8000));
+  assert.equal(
+    refundWallet(normalizeWallet(spent.wallet, end), spent.debit).paidRemaining,
+    0,
+  );
+});
+test("monthly credits expire and a new annual term does not inherit the previous year's credits", () => {
+  const start = Date.UTC(2026, 0, 1),
+    end = addMonths(start, 1);
+  const monthly = normalizeWallet(
+    {
+      ...emptyWallet(start),
+      entitlement: {
+        paymentId: "monthly",
+        cadence: "monthly",
+        termStart: start,
+        termEnd: end,
+      },
+    },
+    start,
+  );
+  assert.equal(monthly.paidExpiresAt, end);
+  assert.equal(normalizeWallet(monthly, end).paidRemaining, 0);
+  const annual = normalizeWallet(
+    {
+      ...emptyWallet(start),
+      entitlement: {
+        paymentId: "year1",
+        cadence: "annual",
+        termStart: start,
+        termEnd: addMonths(start, 12),
+      },
+    },
+    addMonths(start, 11),
+  );
+  assert.equal(annual.paidRemaining, units(48000));
+  const renewed = normalizeWallet(
+    {
+      ...annual,
+      entitlement: {
+        paymentId: "year2",
+        cadence: "annual",
+        termStart: addMonths(start, 12),
+        termEnd: addMonths(start, 24),
+      },
+    },
+    addMonths(start, 12),
+  );
+  assert.equal(renewed.paidRemaining, units(4000));
 });

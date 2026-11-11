@@ -111,8 +111,10 @@ export default function Pricing() {
                   onChange={(e) => setAccept(e.target.checked)}
                 />{" "}
                 I agree to pay ${annual ? "240" : "20"} for one{" "}
-                {annual ? "year" : "month"}. Renew manually; credits expire
-                monthly.
+                {annual ? "year" : "month"}. Renew manually;{" "}
+                {annual
+                  ? "unused credits roll over until your annual term ends."
+                  : "unused credits expire when your monthly term ends."}
               </label>
               <button
                 className="primary"
@@ -134,7 +136,11 @@ export default function Pricing() {
                 : "$20 billed monthly"}
             </li>
             <li>4,000 credits released monthly, including annual plans</li>
-            <li>Unused subscription credits expire each monthly period</li>
+            <li>
+              {annual
+                ? "Unused credits roll over each month until your annual term ends"
+                : "Unused credits expire at the end of your monthly term"}
+            </li>
             <li>200 daily free credits included and used first</li>
           </ul>
           <small>
@@ -181,8 +187,9 @@ export default function Pricing() {
         <p>
           Daily free credits are consumed first, then your current subscription
           allocation. Credits cannot be redeemed for cash. Annual subscriptions
-          release credits monthly rather than all at once, and neither balance
-          rolls over.
+          release credits monthly rather than all at once. Unused annual credits
+          roll over until the annual term ends. Monthly-plan credits expire each
+          term, and daily free credits expire each day.
         </p>
         <p>
           Credits are reserved when a batch starts. If annotation fails, credits

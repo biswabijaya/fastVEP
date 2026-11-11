@@ -109,6 +109,7 @@ export type Wallet = {
   paidWindow: string | null;
   paidRemaining: number;
   paidExpiresAt: number | null;
+  paidAllocationCount?: number;
   entitlement: Entitlement | null;
   queuedEntitlements?: Entitlement[];
 };
@@ -145,6 +146,7 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
     next.paidWindow = null;
     next.paidRemaining = 0;
     next.paidExpiresAt = null;
+    next.paidAllocationCount = 0;
     return next;
   }
   let offset = 0;
@@ -156,11 +158,41 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
     entitlement.termEnd,
   );
   const key = `${entitlement.paymentId}:${start}`;
-  if (next.paidWindow !== key) {
-    next.paidWindow = key;
-    next.paidRemaining = units(MONTHLY_CREDITS);
+  if (entitlement.cadence === "annual") {
+    const sameTerm =
+      next.paidWindow?.startsWith(`${entitlement.paymentId}:`) || false;
+    // Infer the last issued allocation for wallets written before rollover support.
+    let previousCount = 0;
+    if (sameTerm) {
+      if (next.paidAllocationCount !== undefined)
+        previousCount = next.paidAllocationCount;
+      else {
+        const previousStart = Number(
+          next.paidWindow!.slice(entitlement.paymentId.length + 1),
+        );
+        while (
+          previousCount < 12 &&
+          addMonths(entitlement.termStart, previousCount) <= previousStart
+        )
+          previousCount++;
+      }
+    }
+    const issuedCount = offset + 1;
+    next.paidRemaining =
+      (sameTerm ? next.paidRemaining : 0) +
+      units(MONTHLY_CREDITS) * Math.max(0, issuedCount - previousCount);
+    next.paidAllocationCount = issuedCount;
+    // Annual credits share one expiry and refund window for the whole purchased year.
+    next.paidWindow = `${entitlement.paymentId}:${entitlement.termStart}`;
+    next.paidExpiresAt = entitlement.termEnd;
+  } else {
+    if (next.paidWindow !== key) {
+      next.paidWindow = key;
+      next.paidRemaining = units(MONTHLY_CREDITS);
+    }
+    next.paidAllocationCount = 1;
+    next.paidExpiresAt = end;
   }
-  next.paidExpiresAt = end;
   return next;
 }
 export type Debit = {

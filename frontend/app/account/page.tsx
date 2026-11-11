@@ -132,8 +132,9 @@ export default function Usage() {
       <section className="panel">
         <h2>Subscription payments</h2>
         <p>
-          Each purchase covers one term. Annual terms release credits monthly.
-          Renew manually after your term expires.
+          Each purchase covers one term. Annual terms release credits monthly;
+          unused credits roll over until the annual term ends. Renew manually
+          after your term expires.
         </p>
         {payments.length ? (
           <div className="table-wrap">

@@ -168,3 +168,29 @@ test("verified annual payments are granted once, not as an upfront annual credit
     /already been assigned/,
   );
 });
+
+test("annual rollover persists through repeated account reads without duplicate allocations", async () => {
+  const { normalizeWallet } = await import("../src/lib/credits");
+  const today = new Date();
+  const start = Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1);
+  const u = { ...user, uid: "annual-rollover-persisted" },
+    account = newAccount(u, start);
+  account.wallet = normalizeWallet(
+    {
+      ...account.wallet,
+      entitlement: {
+        paymentId: "rollover-year",
+        cadence: "annual",
+        termStart: start,
+        termEnd: addMonths(start, 12),
+      },
+    },
+    start,
+  );
+  account.wallet.paidRemaining = units(3000);
+  await accountRef(u.uid).set(account);
+  assert.equal((await getAccount(u)).subscriptionCredits, 11000);
+  assert.equal((await getAccount(u)).subscriptionCredits, 11000);
+  const saved = await accountRef(u.uid).get();
+  assert.equal(saved.data()?.wallet.paidAllocationCount, 3);
+});
