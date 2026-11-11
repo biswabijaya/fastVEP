@@ -26,7 +26,7 @@ Reference files are built into the engine image, with SHA256SUMS retained in the
 reference directory. ClinVar is captured at image build time; retain the image
 digest for reproducibility. Rebuilding references can change ClinVar results.
 
-Build the engine with `gcloud builds submit --config deploy/cloudbuild.yaml`.
+Build the engine with `gcloud builds submit --region us-central1 --config deploy/cloudbuild.yaml`.
 Deploy the resulting image to the private `fastvep-engine` Cloud Run service,
 then configure FASTVEP_API_URL and FASTVEP_API_AUDIENCE in frontend/apphosting.yaml.
 Engine reference rebuilds are a separate operator action; frontend promotions reuse
