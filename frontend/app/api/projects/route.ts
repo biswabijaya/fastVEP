@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { accountRef, database, errorResponse, limitedText, requireUser } from "../../../src/server/admin";
 import { getAccount, type Account } from "../../../src/server/wallet";
 import { normalizeWallet, ServiceError, walletView } from "../../../src/lib/credits";
-import { FREE_PROJECT_LIMITS, PROJECT_POLICY_VERSION, PROJECT_RATES, projectDetails, type Project } from "../../../src/lib/project-policy";
+import { FREE_PROJECT_LIMITS, PROJECT_POLICY_VERSION, PROJECT_RATES, projectDetails, projectExpiry, freeProjectExpiry, type Project } from "../../../src/lib/project-policy";
 export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
@@ -10,7 +10,10 @@ export async function GET(request: Request) {
     const account = await getAccount(user);
     const result = await accountRef(user.uid).collection("projects").orderBy("createdAt", "desc").limit(100).get();
     return Response.json({
-      projects: result.docs.map((doc) => doc.data()),
+      projects: result.docs.map((doc) => {
+        const project = doc.data() as Project;
+        return { ...project, expiresAt: projectExpiry(project, account.plan === "free") };
+      }).filter((project) => project.expiresAt === null || project.expiresAt > Date.now()),
       policy: { version: PROJECT_POLICY_VERSION, rates: PROJECT_RATES, freeLimits: FREE_PROJECT_LIMITS },
       plan: account.plan,
       capabilities: { uploads: false, runs: false },
@@ -23,18 +26,22 @@ export async function POST(request: Request) {
     const details = projectDetails(JSON.parse(await limitedText(request, 8192)));
     await getAccount(user);
     const ref = accountRef(user.uid);
-    const project: Project = { id: randomUUID(), ...details, createdAt: Date.now(), updatedAt: Date.now() };
+    const project: Project = { id: randomUUID(), ...details, createdAt: Date.now(), updatedAt: Date.now(), expiresAt: null };
     await database().runTransaction(async (tx) => {
-      // All project creation paths must update this guard document atomically.
-      const guard = ref.collection("usage").doc("projects");
-      const [accountSnapshot, usageSnapshot] = await Promise.all([tx.get(ref), tx.get(guard)]);
+      const [accountSnapshot, projects] = await Promise.all([
+        tx.get(ref), tx.get(ref.collection("projects").limit(1000)),
+      ]);
       const account = accountSnapshot.data() as Account;
-      const free = walletView(normalizeWallet(account.wallet, Date.now()), Date.now()).plan === "free";
-      const count = usageSnapshot.data()?.count ?? 0;
+      const now = Date.now();
+      const free = walletView(normalizeWallet(account.wallet, now), now).plan === "free";
+      const count = projects.docs.filter((doc) => {
+        const expiresAt = projectExpiry(doc.data() as Project, free);
+        return expiresAt === null || expiresAt > now;
+      }).length;
       if (count >= (free ? FREE_PROJECT_LIMITS.projects : 100))
         throw new ServiceError(403, "Your account has reached its project limit.", "project_limit");
+      project.expiresAt = free ? freeProjectExpiry(project.createdAt) : null;
       tx.create(ref.collection("projects").doc(project.id), project);
-      tx.set(guard, { count: count + 1 });
     });
     return Response.json({ project }, { status: 201, headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

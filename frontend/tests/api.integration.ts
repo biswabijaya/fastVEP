@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
 import { getAuth } from "firebase-admin/auth";
-import { adminApp } from "../src/server/admin";
+import { accountRef, adminApp } from "../src/server/admin";
 if (
   !process.env.FIRESTORE_EMULATOR_HOST ||
   !process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
@@ -189,9 +189,36 @@ test("projects are owner scoped and concurrent creation enforces the free projec
   assert.equal(responses.filter((response) => response.status === 403).length, 2);
   const mine = await (await request("/api/projects")).json();
   assert.equal(mine.projects.length, 3);
+  for (const project of mine.projects) {
+    const created = new Date(project.createdAt);
+    assert.equal(project.expiresAt, Date.UTC(created.getUTCFullYear(), created.getUTCMonth() + 1, 1));
+  }
   assert.equal(mine.capabilities.uploads, false);
   assert.equal(mine.capabilities.runs, false);
   const theirs = await (await request("/api/projects", undefined, undefined, otherToken)).json();
   assert.equal(theirs.projects.length, 0);
   assert.equal((await request("/api/projects", { name: " " }, undefined, otherToken)).status, 400);
+});
+
+
+test("expired projects are inaccessible, free capacity is restored, and collection removes their records without charging", async () => {
+  const { cleanupExpiredProjects } = await import("../src/server/project-cleanup");
+  const ref = accountRef("api-owner").collection("projects").doc("expired-project");
+  await ref.set({ id: ref.id, name: "Expired", description: "", createdAt: 1, updatedAt: 1, expiresAt: 2 });
+  await ref.collection("runs").doc("old-run").set({ status: "complete" });
+  const before = (await (await request("/api/account")).json()).account.totalCredits;
+  const listed = await (await request("/api/projects")).json();
+  assert.equal(listed.projects.some((project: { id: string }) => project.id === ref.id), false);
+  // One of the three successful concurrent creations may have any name.
+  const active = (await accountRef("api-owner").collection("projects").get()).docs.find((doc) => doc.id !== ref.id);
+  assert.ok(active);
+  await active.ref.update({ expiresAt: 2 });
+  assert.equal((await request("/api/projects", { name: "New month project" })).status, 201);
+  const { deleted } = await cleanupExpiredProjects();
+  assert.ok(deleted >= 1);
+  assert.equal((await ref.get()).exists, false);
+  assert.equal((await ref.collection("runs").get()).empty, true);
+  assert.equal((await (await request("/api/account")).json()).account.totalCredits, before);
+  assert.equal((await fetch(`${base}/api/internal/projects/cleanup`, { method: "POST" })).status, 401);
+  assert.equal((await fetch(`${base}/api/internal/projects/cleanup`, { method: "POST", headers: { Authorization: `Bearer ${token}` } })).status, 403);
 });

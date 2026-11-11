@@ -44,11 +44,12 @@ export default function Projects() {
     {message && <p role="alert">{message}</p>}
     <div className="feature-grid">{projects.map((project) => <article key={project.id}>
       <h2>{project.name}</h2><p>Created {new Date(project.createdAt).toLocaleDateString()}</p>
+      {project.expiresAt && <p>Expires {new Date(project.expiresAt).toLocaleString(undefined, { timeZone: "UTC" })} UTC. Automatic expiry is free.</p>}
       <p>No input files or runs yet.</p>
     </article>)}</div>
     <h2>File and processing rates</h2>
     <p>Per started 100 MB: upload 1 credit · save output 1 credit · download {PROJECT_RATES.download} credits · delete 1 credit.</p>
     <p>Storage: {PROJECT_RATES.storageMonthly} credits per started 100 MB of total retained data at month-end, charged at 00:00 UTC on the first. Annotation: 1 credit per started 5,000 alternate alleles, with no base fee.</p>
-    <p>Free accounts: 3 projects, 100 MB retained data, 100 MB uploaded and downloaded per UTC day, and one active run. Transfer and storage limits apply in addition to credit balances.</p>
+    <p>Free accounts: projects expire at the end of each calendar month (UTC), with free automatic cleanup and no new monthly storage charge. Up to 3 projects, 100 MB per uploaded file, 100 MB retained data, 100 MB uploaded and downloaded per UTC day, and one active run. Transfer and storage limits apply in addition to credit balances.</p>
   </section>;
 }

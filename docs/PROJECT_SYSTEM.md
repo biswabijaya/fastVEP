@@ -6,7 +6,7 @@ The first increment adds authenticated, owner-scoped project creation/listing an
 
 The project endpoint advertises `capabilities.uploads=false` and `capabilities.runs=false`. Do not enable file controls until the actual storage and worker capabilities exist.
 
-## Selected policy — 2026-11-11-v2
+## Selected policy — 2026-11-11-v3
 
 Decimal MB; each block is 100,000,000 bytes. Transfers round per file/session; storage rounds once across all account files.
 
@@ -20,7 +20,7 @@ Decimal MB; each block is 100,000,000 bytes. Transfers round per file/session; s
 
 At annual fully consumed credit revenue ($0.0041667/credit), the file rates leave approximately 91% storage margin at $0.02/GiB-month, 93% common-download margin at $0.12/GiB, and 87% download margin at $0.23/GiB. These estimates exclude overhead, provider fees, retained deleted copies and promotional usage. Prices are versioned; no overall margin guarantee is implied.
 
-Free account policy: three projects, 100 MB retained, 100 MB uploads/day, 100 MB downloads/day, one active run, maximum expanded input 1 GB. Only the project count is enforced in this increment; byte and run limits must be enforced atomically when those endpoints are implemented. Paid accounts initially have an operational limit of 100 projects. Current small-batch workspace limits remain in force.
+Free account policy: projects expire at the next UTC month boundary (not 30 days). Automatic expiry is free and excluded from new monthly storage charges. Three projects, 100 MB per uploaded file, 100 MB retained, 100 MB uploads/day, 100 MB downloads/day, one active run, maximum expanded input 1 GB. Project count and month-end expiry are enforced in this increment; byte and run limits must be enforced atomically when those endpoints are implemented. Paid accounts initially have an operational limit of 100 projects. Current small-batch workspace limits remain in force.
 
 ## Next implementation increments
 
@@ -34,6 +34,10 @@ Free account policy: three projects, 100 MB retained, 100 MB uploads/day, 100 MB
 8. Maintain immutable usage events and versioned file lifetimes. Monthly billing must reconstruct the cutoff, not use the current byte counter if the scheduler runs late. Deterministic account/month invoice IDs prevent duplicate settlement. Reserve storage exposure before account credit expiry, show a grace period and enforce quotas on delinquent accounts. Do not permit unlimited unpaid retention.
 9. Before production enablement: fault-injection tests for duplicate events, failed transfers, worker crashes and month boundaries; benchmark representative multi-sample compressed VCFs; verify exact CSQ/genotype preservation; measure actual GCP costs per run.
 
-Project metadata is stored under the authenticated account's `projects` collection in the existing named `fastvep` Firestore database. All access stays server-side under the existing deny-all client rules. Project creation and its usage counter share one transaction to prevent simultaneous requests bypassing limits.
+Project metadata is stored under the authenticated account's `projects` collection in the existing named `fastvep` Firestore database. All access stays server-side under the existing deny-all client rules. Project creation and the active-project query share one transaction to prevent simultaneous requests bypassing limits. Expired projects are filtered immediately and do not consume active-project capacity. Paid-created projects have explicit null expiry; free-created projects keep their fixed expiry. Legacy records without expiry use their creation month when the account is free.
 
 Sources: https://cloud.google.com/storage/pricing and https://cloud.google.com/run/pricing (reviewed 2026-11-11).
+
+## Automatic expiry
+
+`fastvep-project-expiry` in us-central1 calls the OIDC-protected cleanup endpoint daily at 00:00 UTC, with three retries. On the first it collects the preceding month's free projects. API access is denied at the expiry instant even if physical deletion is delayed. The dedicated scheduler identity has no data roles; the frontend server deletes project documents and descendants under its existing identity. No free automatic-expiry debit is created. The collector currently handles metadata only because project file uploads are disabled. It must be extended for storage objects before uploads are enabled. Project expiry is independent of the account's daily credit reset.

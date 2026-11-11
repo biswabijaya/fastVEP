@@ -1,6 +1,6 @@
 import { annotationCredits, ServiceError } from "./credits";
 
-export const PROJECT_POLICY_VERSION = "2026-11-11-v2";
+export const PROJECT_POLICY_VERSION = "2026-11-11-v3";
 export const STORAGE_BLOCK_BYTES = 100_000_000;
 export const PROJECT_RATES = {
   upload: 1,
@@ -11,6 +11,7 @@ export const PROJECT_RATES = {
 } as const;
 export const FREE_PROJECT_LIMITS = {
   projects: 3,
+  uploadFileBytes: 100_000_000,
   retainedBytes: 100_000_000,
   uploadBytesPerDay: 100_000_000,
   downloadBytesPerDay: 100_000_000,
@@ -66,12 +67,21 @@ export type ProjectRun = {
   policyVersion: string;
   createdAt: number;
 };
+export function freeProjectExpiry(createdAt: number) {
+  if (!Number.isFinite(createdAt)) throw new ServiceError(400, "Invalid creation date.");
+  const date = new Date(createdAt);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
+}
+export function projectExpiry(project: { createdAt: number; expiresAt?: number | null }, free: boolean) {
+  return project.expiresAt === undefined ? (free ? freeProjectExpiry(project.createdAt) : null) : project.expiresAt;
+}
 export type Project = {
   id: string;
   name: string;
   description: string;
   createdAt: number;
   updatedAt: number;
+  expiresAt: number | null;
 };
 export function projectDetails(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input))

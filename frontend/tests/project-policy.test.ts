@@ -34,3 +34,15 @@ test("project metadata is bounded and normalized", () => {
   for (const input of [null, [], {}, { name: " " }, { name: "a".repeat(101) }, { name: "A", description: "a".repeat(1001) }])
     assert.throws(() => projectDetails(input));
 });
+
+test("free projects expire exactly at the next UTC month boundary", async () => {
+  const { freeProjectExpiry, projectExpiry, FREE_PROJECT_LIMITS } = await import("../src/lib/project-policy");
+  assert.equal(freeProjectExpiry(Date.UTC(2026, 10, 1)), Date.UTC(2026, 11, 1));
+  assert.equal(freeProjectExpiry(Date.UTC(2026, 10, 30, 23, 59, 59)), Date.UTC(2026, 11, 1));
+  assert.equal(freeProjectExpiry(Date.UTC(2026, 11, 31)), Date.UTC(2027, 0, 1));
+  assert.equal(freeProjectExpiry(Date.UTC(2028, 1, 29)), Date.UTC(2028, 2, 1));
+  const legacy = { createdAt: Date.UTC(2026, 10, 3) };
+  assert.equal(projectExpiry(legacy, true), Date.UTC(2026, 11, 1));
+  assert.equal(projectExpiry({ ...legacy, expiresAt: null }, true), null);
+  assert.equal(FREE_PROJECT_LIMITS.uploadFileBytes, 100_000_000);
+});
