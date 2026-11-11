@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       {
         ...counts,
         batchCredits: BATCH_CREDITS,
-        variantCredits: credits(counts.variantCount),
+        variantCredits: credits(quoteUnits(counts.variantCount)),
         totalCredits: credits(quoteUnits(counts.variantCount)),
       },
       { headers: { "Cache-Control": "private, no-store" } },

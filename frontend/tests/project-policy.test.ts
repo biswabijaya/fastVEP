@@ -18,12 +18,9 @@ test("annual credit revenue covers common and higher priced downloads at over 80
     assert.ok(1 - blockGiB * destinationRate / (PROJECT_RATES.download * annualCreditRevenue) >= 0.8);
   assert.ok(1 - blockGiB * 0.02 / (PROJECT_RATES.storageMonthly * annualCreditRevenue) >= 0.9);
 });
-test("run fees retain the base charge and round only the variable charge", () => {
-  assert.equal(projectRunCharge(1), 151);
-  assert.equal(projectRunCharge(100), 151);
-  assert.equal(projectRunCharge(101), 152);
-  assert.equal(projectRunCharge(1000), 160);
-  assert.equal(projectRunCharge(100000), 1150);
+test("run fees have no base charge and round up per 5,000 alternate alleles", () => {
+  for (const [variants, charge] of [[1, 1], [1000, 1], [5000, 1], [5001, 2], [100000, 20], [1000000, 200]])
+    assert.equal(projectRunCharge(variants), charge);
   assert.throws(() => projectRunCharge(0));
 });
 test("free byte allowances cannot be exceeded with partial or oversized transfers", () => {

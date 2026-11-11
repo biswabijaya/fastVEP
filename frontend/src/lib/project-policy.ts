@@ -1,6 +1,6 @@
-import { ServiceError } from "./credits";
+import { annotationCredits, ServiceError } from "./credits";
 
-export const PROJECT_POLICY_VERSION = "2026-11-11-v1";
+export const PROJECT_POLICY_VERSION = "2026-11-11-v2";
 export const STORAGE_BLOCK_BYTES = 100_000_000;
 export const PROJECT_RATES = {
   upload: 1,
@@ -29,7 +29,7 @@ export function fileCharge(bytes: number, operation: FileOperation) {
 export function projectRunCharge(variants: number) {
   if (!Number.isSafeInteger(variants) || variants < 1)
     throw new ServiceError(400, "Invalid variant count.");
-  return 150 + Math.ceil(variants / 100);
+  return annotationCredits(variants);
 }
 export function enforceFreeByteLimit(
   usedBytes: number,

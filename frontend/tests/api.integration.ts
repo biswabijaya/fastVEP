@@ -111,6 +111,10 @@ test("server routes enforce sign-in and verified identity", async () => {
 test("quotes do not debit, completed retries do not charge, and downloads are private", async () => {
   const q = await request("/api/quote", { vcf });
   assert.equal(q.status, 200);
+  const quote = await q.json();
+  assert.equal(quote.batchCredits, 0);
+  assert.equal(quote.variantCredits, 1);
+  assert.equal(quote.totalCredits, 1);
   assert.equal(
     (await request("/api/account").then((r) => r.json())).account.dailyCredits,
     300,
@@ -119,10 +123,10 @@ test("quotes do not debit, completed retries do not charge, and downloads are pr
   const r = await request("/api/fastvep/annotate", { vcf }, id);
   assert.equal(r.status, 200, await r.clone().text());
   const result = await r.json();
-  assert.equal(result.billing.totalCredits, 150.01);
+  assert.equal(result.billing.totalCredits, 1);
   assert.equal(
     (await request("/api/account").then((r) => r.json())).account.dailyCredits,
-    149.99,
+    299,
   );
   assert.equal(
     (await request("/api/fastvep/annotate", { vcf }, id)).status,
@@ -142,9 +146,10 @@ test("quotes do not debit, completed retries do not charge, and downloads are pr
         "api-batch-bbbbbbbbbbbbbbbb",
       )
     ).status,
-    402,
+    200,
   );
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
+  assert.equal((await (await request("/api/account")).json()).account.dailyCredits, 298);
 });
 test("engine failures refund credits and never expose a result", async () => {
   const id = "api-failure-aaaaaaaaaaaa";

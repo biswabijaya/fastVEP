@@ -6,7 +6,7 @@ The first increment adds authenticated, owner-scoped project creation/listing an
 
 The project endpoint advertises `capabilities.uploads=false` and `capabilities.runs=false`. Do not enable file controls until the actual storage and worker capabilities exist.
 
-## Selected policy — 2026-11-11-v1
+## Selected policy — 2026-11-11-v2
 
 Decimal MB; each block is 100,000,000 bytes. Transfers round per file/session; storage rounds once across all account files.
 
@@ -15,7 +15,7 @@ Decimal MB; each block is 100,000,000 bytes. Transfers round per file/session; s
 - Download: 40 credits per started block, per distinct download session.
 - Deletion: 1 credit per started block, once; retries are not new deletions.
 - Monthly storage: 5 credits per started block of total retained account data at the previous UTC month boundary. Settle at 00:00 UTC on the first. Deleted files are excluded. Do not charge settled transfer operations again.
-- Run: 150 + ceil(billable alternate alleles / 100) credits. Quote only after server validation/counting. Do not round the base fee with the variable component.
+- Run: ceil(billable alternate alleles / 5,000) credits (200 credits per million), with no base fee. Quote only after server validation/counting.
 - Annual plans continue to pay ten monthly prices for twelve allocations.
 
 At annual fully consumed credit revenue ($0.0041667/credit), the file rates leave approximately 91% storage margin at $0.02/GiB-month, 93% common-download margin at $0.12/GiB, and 87% download margin at $0.23/GiB. These estimates exclude overhead, provider fees, retained deleted copies and promotional usage. Prices are versioned; no overall margin guarantee is implied.

@@ -3,8 +3,13 @@ export const UNITS_PER_CREDIT = 100;
 export const DAILY_CREDITS = 300;
 export const MONTHLY_CREDITS = 4000;
 export const CREDITS_PER_USD = 200;
-export const BATCH_CREDITS = 150;
-export const VARIANT_UNITS = 1;
+export const BATCH_CREDITS = 0;
+export const VARIANTS_PER_CREDIT = 5000;
+export function annotationCredits(variantCount: number) {
+  if (!Number.isSafeInteger(variantCount) || variantCount < 1)
+    throw new ServiceError(400, "Invalid variant count.");
+  return Math.ceil(variantCount / VARIANTS_PER_CREDIT);
+}
 export const MAX_VARIANTS = 1000;
 export const RESULT_TTL_MS = 24 * 60 * 60 * 1000;
 export type Cadence = "monthly" | "annual";
@@ -91,7 +96,7 @@ export function quoteUnits(variantCount: number) {
     variantCount > MAX_VARIANTS
   )
     throw new ServiceError(400, "Invalid variant count.");
-  return units(BATCH_CREDITS) + variantCount * VARIANT_UNITS;
+  return units(annotationCredits(variantCount));
 }
 export type Entitlement = {
   paymentId: string;

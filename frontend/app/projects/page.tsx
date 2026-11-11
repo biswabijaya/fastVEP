@@ -48,7 +48,7 @@ export default function Projects() {
     </article>)}</div>
     <h2>File and processing rates</h2>
     <p>Per started 100 MB: upload 1 credit · save output 1 credit · download {PROJECT_RATES.download} credits · delete 1 credit.</p>
-    <p>Storage: {PROJECT_RATES.storageMonthly} credits per started 100 MB of total retained data at month-end, charged at 00:00 UTC on the first. Annotation: 150 credits plus 0.01 per alternate allele, rounded up to a whole credit.</p>
+    <p>Storage: {PROJECT_RATES.storageMonthly} credits per started 100 MB of total retained data at month-end, charged at 00:00 UTC on the first. Annotation: 1 credit per started 5,000 alternate alleles, with no base fee.</p>
     <p>Free accounts: 3 projects, 100 MB retained data, 100 MB uploaded and downloaded per UTC day, and one active run. Transfer and storage limits apply in addition to credit balances.</p>
   </section>;
 }

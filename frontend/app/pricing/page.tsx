@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "../../src/components/Session";
 import {
-  BATCH_CREDITS,
+  annotationCredits,
   DAILY_CREDITS,
   MAX_VARIANTS,
   type Cadence,
@@ -308,10 +308,9 @@ export default function Pricing() {
       <section className="panel calculator">
         <div>
           <span className="eyebrow">KNOW YOUR COST</span>
-          <h2>One batch fee. One variant fee.</h2>
+          <h2>200 credits per million variants.</h2>
           <p>
-            {BATCH_CREDITS} credits per batch + 0.01 credit per alternate
-            allele.
+            1 credit per started 5,000 alternate alleles. No batch fee.
             <br />
             Each batch supports up to {MAX_VARIANTS.toLocaleString()} alternate
             alleles.
@@ -335,7 +334,7 @@ export default function Pricing() {
           />
         </label>
         <div className="estimate">
-          <strong>{(BATCH_CREDITS + count * 0.01).toFixed(2)} credits</strong>
+          <strong>{annotationCredits(count).toLocaleString()} credits</strong>
           <span>Daily free credits are used first</span>
         </div>
       </section>

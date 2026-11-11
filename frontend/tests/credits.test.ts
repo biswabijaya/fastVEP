@@ -13,8 +13,9 @@ import {
 } from "../src/lib/credits";
 const now = Date.UTC(2026, 10, 11, 23, 59, 59);
 const line = "17\t43124025\t.\tA\tG\t.\tPASS\t.";
-test("quotes include a fixed batch fee and charge each alternate allele", () => {
-  assert.equal(quoteUnits(1000), units(160));
+test("quotes round to whole credits with no batch fee and count alternate alleles", () => {
+  assert.equal(quoteUnits(1000), units(1));
+  assert.equal(quoteUnits(1), units(1));
   assert.equal(inspectVcf(line.replace("\tG\t", "\tG,T\t")).variantCount, 2);
   assert.throws(() => inspectVcf(line.replaceAll("\t", " ")), /tab-separated/);
   assert.throws(() => inspectVcf(Array(1001).fill(line).join("\n")), /1,000/);

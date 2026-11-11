@@ -42,13 +42,13 @@ Credits are a service allowance, not redeemable cash. Annual allocation and refu
 
 ## Annotation tariff
 
-150 credits per batch + 0.01 credit per alternate allele. Interactive input remains limited to 1,000 alternate alleles and 1 MiB per request. Multi-allelic rows count every ALT. Transcript selection and ClinVar evidence do not add a separate charge. ACMG classification remains unavailable until its evidence stack is complete.
+1 credit per started 5,000 alternate alleles, with no batch fee (200 credits per million). Interactive input remains limited to 1,000 alternate alleles and 1 MiB per request. Multi-allelic rows count every ALT. Transcript selection and ClinVar evidence do not add a separate charge. ACMG classification remains unavailable until its evidence stack is complete.
 
 | Variants | Batches of 1,000 | Credits |
 | --- | ---: | ---: |
-| 1,000 | 1 | 160 |
-| 10,000 | 10 | 1,600 |
-| 100,000 | 100 | 16,000 |
+| 1,000 | 1 | 1 |
+| 10,000 | 10 | 10 |
+| 100,000 | 100 | 100 |
 
 The browser previews credits; the server recomputes the charge. Firestore transactions reserve free credits first and then paid credits. A persistent idempotency key binds the job to its normalized payload, prevents duplicate charging and permits replay of the same result. Each account has at most one pending annotation. Failure returns only unexpired credits; a five-minute lease reconciles interrupted requests.
 
@@ -58,9 +58,7 @@ The 80–90% margin remains a target, not a guarantee. Google lists request-base
 
 Planning allowance: $0.03 per successful batch, including an isolated cold start. This is an assumption, not a measured ceiling. A 120-second startup at 8 boosted vCPU / 16 GiB alone is about $0.02784. Warm requests may be cheaper; long starts, failed requests and abuse can cost more.
 
-For the base $20 monthly Research plan, 31 days provide up to 9,300 free + 4,000 paid credits. The minimum 150.01-credit charge permits at most 88 successful batches: $2.64 modeled compute/service cost. Add an illustrative, unverified APS fee of 2.9% + $0.30 ($0.88) and $0.10/account operations: $3.62 cost / $20 revenue = **81.9% contribution margin**.
-
-With the new annual promotion, base Research revenue is **$200/year**. A 365-day account can receive 109,500 free + 48,000 annual paid credits, at most 1,049 minimum-fee jobs. At $0.03/job, illustrative 2.9% + $0.30 annual payment fee and $1.20/year operations, modeled cost is $31.47 + $6.10 + $1.20 = **$38.77**, or **80.615% annual contribution margin**. Annual rollover can concentrate costs in a later month, so evaluate this cohort over the purchased year. Daily expiry may lower actual use. The promotion reduces the margin buffer versus the former $240 annual price.
+The revised tariff invalidates the former 150-credit minimum batch margin model. A 1,000-variant interactive run costs 1 credit; 300 free daily credits can cover 300 such runs. Large project runs bill ceil(variants / 5,000), whereas repeated interactive requests each round separately. Free-account request budgets and measured worker benchmarks are required before claiming a cohort margin. Annual fully consumed credits earn $0.0041667 each: a million-variant run earns $0.8333, allowing at most $0.1667 total GCP cost for 80% margin or $0.0833 for 90%. These are budgets, not measured performance.
 
 Clinical bundle margins must additionally include Clinical, Reporting and AI costs. Actual APS merchant fees, AI/model consumption, service usage, abuse, support, taxes, refunds and chargebacks have not been established by this model. Including AI at no extra customer charge does not eliminate its underlying cost. Do not promise a guaranteed 80% margin for the Clinical bundle or unlimited AI use. Free-only users have no revenue; their subsidy is a separate acquisition budget.
 
@@ -101,4 +99,4 @@ Customer-facing branding is VEP. Public source-repository links have been remove
 
 ## Project file billing — development policy
 
-The new project workflow uses storage at **5 credits per started 100 MB/month** and downloads at **40 credits per started 100 MB per download session**, preserving margin headroom for annual plans. Upload and output-save charges remain 1 credit per started 100 MB. Deletion is 1 credit per started 100 MB, once. Storage is an account aggregate month-end snapshot settled at 00:00 UTC on the first; previously settled operations are not charged twice. Project runs retain 150 credits plus ceil(variants / 100). These rates are defined in the new project policy, not yet connected to live transfer or storage deductions. See PROJECT_SYSTEM.md for implementation status, free limits and required billing protections.
+The new project workflow uses storage at **5 credits per started 100 MB/month** and downloads at **40 credits per started 100 MB per download session**, preserving margin headroom for annual plans. Upload and output-save charges remain 1 credit per started 100 MB. Deletion is 1 credit per started 100 MB, once. Storage is an account aggregate month-end snapshot settled at 00:00 UTC on the first; previously settled operations are not charged twice. Project runs use ceil(variants / 5,000), with no base fee. These rates are defined in the new project policy, not yet connected to live transfer or storage deductions. See PROJECT_SYSTEM.md for implementation status, free limits and required billing protections.

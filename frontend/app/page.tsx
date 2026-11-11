@@ -282,7 +282,7 @@ function Workspace() {
         </div>
         <div>
           <span>Batch pricing</span>
-          <strong>150 + 0.01 / variant</strong>
+          <strong>1 credit / 5,000 variants</strong>
           <small>Each alternate allele counts as one variant</small>
         </div>
       </div>
@@ -396,7 +396,7 @@ function Workspace() {
           <span>
             {estimated !== null
               ? `This batch: ${estimated.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits`
-              : "150 credits per batch + 0.01 credit per alternate allele"}
+              : "1 credit per started 5,000 alternate alleles · No batch fee"}
             <small>
               Browser input check · Private results available for 24 hours
             </small>
