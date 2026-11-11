@@ -1,67 +1,83 @@
-# fastVEP accounts, pricing and payment launch
+# fastVEP pricing, credits and payment launch
 
-Confirmed terms (2026-11-11): $1 = 200 credits; Free has 300 credits per UTC day; Pro costs $20/month or $240/year, with 4,000 subscription credits released monthly. Annual billing has no discount at the requested exchange rate. Daily credits expire at 00:00 UTC. Monthly-plan credits expire at the end of the monthly term. Annual-plan credits are issued monthly and roll over until the annual term ends, when any remaining balance expires. Daily free credits do not roll over. Free credits are spent first and can combine with subscription credits. Credits are a service allowance, not redeemable cash.
+Current terms, 2026-11-11. All subscriptions are paid manually for one purchased term. No automatic renewal, stored-card billing or recurring charges are enabled. Customer-facing prices and payment history remain USD; Amazon Payment Services receives SAR settlement at 3.75 SAR/USD. No live card purchase has been attempted.
 
-## Annotation charge
+## Three tiers
 
-Proposed margin-aware tariff: **150 credits per batch + 0.01 credit per alternate allele**. Interactive jobs are limited to 1,000 alternate alleles and 1 MiB request size. Multi-allelic VCF rows count each ALT allele. The price includes all returned transcripts and ClinVar evidence. ACMG remains unavailable until the evidence stack is complete.
-
-| Variants | Batches of 1,000 | Credits | Service value before free credits |
+| Tier | Monthly subscription | Annual subscription | Monthly paid credit allocation |
 | --- | ---: | ---: | ---: |
-| 1,000 | 1 | 160 | $0.80 |
-| 10,000 | 10 | 1,600 | $8.00 |
-| 100,000 | 100 | 16,000 | $80.00 |
+| Free | $0 | $0 | No paid allocation; 300 free credits each UTC day |
+| Research | $20–$200 | $200–$2,000 | 4,000–40,000 credits |
+| Clinical | $200–$20,000 | $2,000–$200,000 | 40,000–4,000,000 credits |
 
-Smaller batches pay the fixed fee each time. These are usage prices, not separate checkout amounts; customers buy the confirmed monthly or annual plan. The browser shows the total before submission, and the server recomputes it. Keeping these amounts in one shared pricing module prevents client/server drift.
+Annual subscriptions charge **ten times the monthly price** for twelve months of access and twelve monthly credit allocations: pay for ten months, get two months free (16.67% off twelve monthly payments). The page shows a monthly equivalent and the full annual payment, so no monthly collection is implied. All selected options use the existing base rate of 200 credits per monthly-plan dollar; annual subscribers receive the same monthly credit allocation during the two free months.
 
-## Margin model, not a guarantee
+Research monthly options: $20 / $40 / $60 / $80 / $100 / $150 / $200, corresponding to 4,000 / 8,000 / 12,000 / 16,000 / 20,000 / 30,000 / 40,000 credits.
 
-Google lists request-based Cloud Run us-central1 active CPU at $0.000024/vCPU-second and memory at $0.0000025/GiB-second. At the deployed 4-vCPU / 16-GiB engine configuration, active runtime costs approximately $0.000136/second. Startup CPU boost, loading references, frontend runtime, result storage/downloads and Firestore add cost. Rates and free tiers are shared across the billing account; this model does **not** rely on free tiers.
+Clinical monthly options: $200 / $500 / $1,000 / $2,000 / $5,000 / $10,000 / $20,000, corresponding to 40,000 / 100,000 / 200,000 / 400,000 / 1,000,000 / 2,000,000 / 4,000,000 credits.
 
-Planning allowance: $0.03 per successful batch, including an isolated cold start. This is an assumption to validate against billing exports, not a measured upper bound. For example, 120 seconds at 8 boosted vCPU / 16 GiB alone is about $0.02784, before other work. Concurrent warm requests may cost considerably less; repeated failures or long starts may cost more.
+The shared catalog is `frontend/src/lib/plans.ts`. The server accepts a catalog plan ID, never a client-supplied amount or credit grant. The invoice freezes the plan ID, tier, monthly allowance, charged amount and display amount. Pending invoices are reused only for the same plan, cadence and current price. Existing invoices and purchased terms keep their original amount and allowance; the former $240 annual purchase is not retroactively repriced. New purchases use the ten-month annual tariff. Mid-term upgrades/proration are not offered; users renew manually when their current term ends.
 
-A maximally used 31-day account receives 9,300 daily credits plus 4,000 paid credits. Because balances combine, do not count only one daily batch plus the paid batches. The smallest charge is 150.01 credits, so 13,300 credits permit at most 88 successful batches in aggregate (daily expiry may lower this). At $0.03/batch this costs $2.64. Add an **illustrative, unverified** payment fee of 2.9% + $0.30 ($0.88 on $20), and $0.10/account of operational overhead: modeled cost $3.62 on $20 revenue, or **81.9% contribution margin**. Actual Amazon Payment Services merchant pricing is not yet established. This model excludes taxes, engineering/support payroll, chargebacks and refunds.
+## Clinical bundle and access boundary
 
-To remain between 80% and 90% contribution margin on $20, total allocated cost must be $2–$4. A target does not imply a hard floor or ceiling: warm usage may yield >90%; expensive cold starts, fraud, retries or free-user acquisition may produce <80%. Instrument actual engine CPU/memory/startup, frontend runtime, Firestore operations, storage/egress, payment fees and failed work before promising a margin. Free-only accounts have no revenue; their subsidy is a separate acquisition budget and cannot have a positive per-account margin. Verified email and one in-flight batch per account reduce misuse but do not prevent multi-account abuse.
+Every Clinical plan includes, at no additional subscription charge:
 
-## Server accounting and data access
+- https://clinical.enigmagenomics.com
+- https://reporting.enigmagenomics.com
+- AI
 
-Money-like credit arithmetic uses integer hundredths of a credit. Firestore transactions reserve daily first, then subscription credits. A persistent idempotency key binds a request to its normalized payload; the same job cannot be charged twice. Only one job may be pending per account. Success settles the reservation; failure returns only unexpired credits. A five-minute lease enables reconciliation after a crashed request. A retry after failure must explicitly start a new batch; a network retry of the same completed request reuses its existing result.
+The authenticated account response derives `includedServices.clinical`, `.reporting` and `.ai` from the active paid Clinical entitlement. These are false for Free/Research and after expiry or subscription revocation. The account page shows the bundle and links for active Clinical subscribers. Inclusion is a billing entitlement, not an administrator role or a promise of unlimited compute.
 
-Results are private in the US-central1 result bucket and available through an authenticated, account-owned endpoint for exactly 24 hours. GCS lifecycle deletion is asynchronous and can occur later; API expiry is enforced separately. Input VCFs are not stored as separate uploads. Returned annotation JSON can contain identifying input-derived fields and remains sensitive. Usage metadata stores counts, dates, genome and charges, not VCF content. Client Firestore access to the named `fastvep` database is denied. Firebase Admin verifies both token revocation and email verification.
+**Cross-application onboarding is not automated by this change.** The linked services retain their existing authentication and approval controls. The SGP AI copilot currently requires approved accounts and has per-account budgets; these controls have not been removed or bypassed. The other applications do not yet consume fastVEP's billing entitlement automatically. Before selling Clinical as an automatically activated bundle, connect their approval/provisioning workflow to the paid entitlement (with expiry/revocation) or provision through the existing approved onboarding process. No unrelated application's access rules or deployment were changed.
 
-## Payment provider
+## Credit expiry and consumption
 
-The existing Enigma provider is Amazon Payment Services (Payfort). Merchant ID, access code and SHA request phrase were copied directly into Google Secret Manager without adding values to source control. The current production request and response phrases were retrieved from the signed-in APS dashboard and stored directly in Secret Manager. A no-purchase production CHECK_STATUS probe returned the expected 12036 (nonexistent order), with a valid response signature. No signing values appear in source control or reports. The PHP repository contained only request phrases; its production/test conditional had to be interpreted explicitly. The dashboard reveal controls must be used to retrieve actual values rather than the initial password placeholders.
+- All users receive **300 daily free credits**, shown only as credits without dollar-equivalent messaging. They reset at 00:00 UTC, expire daily, do not accumulate and are consumed first.
+- Monthly paid credits expire at the end of their purchased monthly term.
+- Annual paid credits are released monthly. Unused balances roll over between months; **all remaining annual paid credits expire together at the annual term end**. They do not roll into a new annual term.
+- Inactive months are credited on the next visit without releasing future allocations early. Persistent allocation counters prevent duplicate monthly issues.
+- An old wallet under the former 200/day policy receives its additional 100 credits once, preserving prior usage; it then follows the 300/day policy.
 
-**Checkout is enabled in the proposed App Hosting configuration**, with production APS credentials. No live purchase has been attempted. Local development and other environments remain disabled unless `FASTVEP_PAYMENTS_ENABLED=true` is explicitly set. The changes are not yet promoted to production. Hosted checkout, signed callbacks/webhooks, independent CHECK_STATUS verification, payment reconciliation, idempotent capture attribution, refund revocation and monthly/annual entitlement accounting are implemented. Checkout gates on the server configuration flag. Signature verification has passed against APS, but actual card payments and SAR settlement have not been exercised. Terms renew manually; automatic renewal is not offered.
+Credits are a service allowance, not redeemable cash. Annual allocation and refund keys persist for the complete annual term, so a failed job crossing a monthly allocation boundary can return unexpired annual credits. Credits already expired at daily or term boundaries are not revived.
 
-Remaining payment validation before promoting a paid launch:
+## Annotation tariff
 
-1. Confirm SAR acceptance and test a customer-approved purchase. Production request and response signature verification already passes a read-only check.
-2. The signed hosted request sets its own return URL to `/api/billing/callback`. `/api/billing/webhook` is also implemented, but the shared merchant-wide notification destination has not been changed because it serves existing Enigma payments. If per-application notifications are available, configure that separately. Customers can use authenticated “Check payment” reconciliation if a return is interrupted. Invoice amounts/currency come from the server catalog. Payment success in the UI does not grant credits. Confirmation requires a valid signed callback and an independently signed CHECK_STATUS response, or an authenticated server reconciliation of the server-owned invoice.
-3. Current terms renew manually, with explicit consent at checkout. If automatic renewals are later requested, verify save-card and recurring support. APS requires `token_name` and `agreement_id` from an initial successful transaction; a one-off PURCHASE is not an automatic subscription. Implement explicit recurring consent, cancellation, renewal scheduling, failed-payment handling and reconciliation before advertising auto-renewal.
-4. Exercise approved sandbox credentials and signed callbacks, including duplicates, invalid signatures, mismatched amounts/currency, abandoned checkout, late success, refunded payments and renewal retries. No live charge without authorization.
-5. Frontend server access is restricted to the four APS secrets. Secret Manager supplies them at runtime and caches for five minutes. No signing phrases are shipped to browser code. Only signed hosted-checkout fields are returned to the customer.
+150 credits per batch + 0.01 credit per alternate allele. Interactive input remains limited to 1,000 alternate alleles and 1 MiB per request. Multi-allelic rows count every ALT. Transcript selection and ClinVar evidence do not add a separate charge. ACMG classification remains unavailable until its evidence stack is complete.
 
-## Release boundary
+| Variants | Batches of 1,000 | Credits |
+| --- | ---: | ---: |
+| 1,000 | 1 | 160 |
+| 10,000 | 10 | 1,600 |
+| 100,000 | 100 | 16,000 |
 
-Development commits go to `biswa`. Production remains on `prod-enigma` until an intentional promotion. App Hosting and the engine remain in `us-central1` in `enigmagenomics`, using fastvep.enigmagenomics.com. New named Firestore database and result bucket are isolated from existing Enigma application data. Test infrastructure uses the `demo-fastvep` emulators and synthetic records.
+The browser previews credits; the server recomputes the charge. Firestore transactions reserve free credits first and then paid credits. A persistent idempotency key binds the job to its normalized payload, prevents duplicate charging and permits replay of the same result. Each account has at most one pending annotation. Failure returns only unexpired credits; a five-minute lease reconciles interrupted requests.
 
-Sources checked 2026-11-11:
+## Margin model: assumptions and the annual discount
+
+The 80–90% margin remains a target, not a guarantee. Google lists request-based Cloud Run us-central1 active CPU at $0.000024/vCPU-second and memory at $0.0000025/GiB-second. At 4 vCPU / 16 GiB, engine active time is approximately $0.000136/second. Startup CPU boost, reference loading, the frontend, Firestore and result storage/downloads add cost. Do not rely on billing-account free tiers.
+
+Planning allowance: $0.03 per successful batch, including an isolated cold start. This is an assumption, not a measured ceiling. A 120-second startup at 8 boosted vCPU / 16 GiB alone is about $0.02784. Warm requests may be cheaper; long starts, failed requests and abuse can cost more.
+
+For the base $20 monthly Research plan, 31 days provide up to 9,300 free + 4,000 paid credits. The minimum 150.01-credit charge permits at most 88 successful batches: $2.64 modeled compute/service cost. Add an illustrative, unverified APS fee of 2.9% + $0.30 ($0.88) and $0.10/account operations: $3.62 cost / $20 revenue = **81.9% contribution margin**.
+
+With the new annual promotion, base Research revenue is **$200/year**. A 365-day account can receive 109,500 free + 48,000 annual paid credits, at most 1,049 minimum-fee jobs. At $0.03/job, illustrative 2.9% + $0.30 annual payment fee and $1.20/year operations, modeled cost is $31.47 + $6.10 + $1.20 = **$38.77**, or **80.615% annual contribution margin**. Annual rollover can concentrate costs in a later month, so evaluate this cohort over the purchased year. Daily expiry may lower actual use. The promotion reduces the margin buffer versus the former $240 annual price.
+
+Clinical bundle margins must additionally include Clinical, Reporting and AI costs. Actual APS merchant fees, AI/model consumption, service usage, abuse, support, taxes, refunds and chargebacks have not been established by this model. Including AI at no extra customer charge does not eliminate its underlying cost. Do not promise a guaranteed 80% margin for the Clinical bundle or unlimited AI use. Free-only users have no revenue; their subsidy is a separate acquisition budget.
+
+## Data, payments and release state
+
+Results are private in the US-central1 bucket `fastvep-results-903636395933`; authenticated, owner-only downloads expire after exactly 24 hours. Storage lifecycle deletion can occur later than API expiry. No input VCF is stored as a separate upload; returned result JSON may contain sensitive input-derived data. Usage metadata contains counts, date, genome and charges. Client access to the named `fastvep` Firestore database is denied; Firebase Admin verifies revoked tokens and verified email.
+
+The current production APS request and response phrases were retrieved from the signed-in merchant dashboard directly into Google Secret Manager. A no-purchase CHECK_STATUS probe returned expected code 12036 for a nonexistent reference, with a valid response signature. No secret values are committed or included in reports.
+
+Checkout, signed callbacks/webhooks, independent CHECK_STATUS verification, owner-only payment reconciliation, idempotent capture attribution and refund revocation are implemented. New invoices settle in SAR, display USD, and grant their frozen selected monthly allowance only after server confirmation. For example, base Research annual charges SAR 750.00 (75000 halalas) for the displayed $200. The maximum Clinical annual amount is $200,000 -> SAR 750,000.00 (75000000 halalas).
+
+The signed checkout has its own `/api/billing/callback` return URL. `/api/billing/webhook` is implemented, but the shared merchant-wide notification destination was not changed because it serves existing Enigma payments. Customers can use authenticated “Check payment” if a return is interrupted. A real approved card purchase and SAR settlement have not been exercised. APS's own checkout and the bank may display the actual SAR charge; fastVEP does not control those screens.
+
+All development goes to `biswa`; production remains on `prod-enigma` until intentional promotion. App Hosting, engine, named database and result bucket stay in `us-central1`, project `enigmagenomics`, domain fastvep.enigmagenomics.com. Emulator tests use only synthetic demo users and data.
+
+Sources:
 - https://cloud.google.com/run/pricing
+- https://www.sama.gov.sa/en-US/MediaCenter/News/Pages/news-557.aspx
 - https://paymentservices.amazon.com/docs/developer-resources/signature
-- https://paymentservices.amazon.com/docs/managing-payments/recurring-payments
 - https://paymentservices.amazon.com/docs/api/managing-payments/check-status
-
-## SAR settlement, USD display
-
-APS checkout submits SAR at the fixed 3.75 SAR/USD peg: $20 -> SAR 75.00 (7500 halalas), $240 -> SAR 900.00 (90000 halalas). Invoice records retain both settlement and display amounts. fastVEP pricing, credit values and payment history remain in USD. Signed checkout, callback validation, captured-amount checks, reconciliation and ledger entries use the invoice's actual settlement currency/amount. Existing USD invoices remain verifiable; pending USD invoices are not reused for new SAR checkouts. APS's own hosted payment page and the customer's bank may display the actual SAR charge; fastVEP does not control those screens.
-
-Exchange-rate source: https://www.sama.gov.sa/en-US/MediaCenter/News/Pages/news-557.aspx
-
-Annual rollover accounting tracks the number of monthly allocations already issued. Inactive months are credited on the next visit without issuing future months early or duplicating allocations. Annual refunds remain valid across monthly boundaries within the same annual term. The 81.9% monthly contribution-margin example is not an upper bound on a rollover user’s monthly cost: annual users may concentrate previously accumulated credits into a later month; evaluate their margin over the paid annual term.
-
-For an illustrative fully used 365-day annual account, 109,500 daily credits plus 48,000 annual-plan credits permit at most 1,049 minimum-fee batches in aggregate. At the same assumed $0.03/batch, illustrative 2.9% + $0.30 annual payment fee, and $1.20/year operational overhead, modeled cost is $39.93 on $240, or 83.36% annual contribution margin. Daily expiry can reduce actual usage; this remains a planning model, not a cost guarantee.
-
-Free allowance is currently 300 credits/day and is presented only as credits in the customer UI, without an upfront dollar equivalent. All paid credits in an annual plan share the purchased annual term’s expiry, including rolled balances. Daily free credits remain a separate daily-expiring balance. Existing wallets receive a one-time 100-credit increase when first normalized under the new allowance, preserving prior daily usage.

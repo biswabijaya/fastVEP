@@ -32,6 +32,9 @@ export async function GET(request: Request) {
           return {
             id: p.id,
             cadence: p.cadence,
+            planId: p.planId || "research-20",
+            tier: p.tier || "research",
+            monthlyCredits: p.monthlyCredits ?? 4000,
             ...displayPayment(p),
             status: p.status,
             createdAt: p.createdAt,

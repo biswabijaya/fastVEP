@@ -1,3 +1,4 @@
+import { findPlan, type PaidTier } from "../lib/plans";
 import { paymentPrice } from "./payment-pricing";
 import { randomUUID } from "node:crypto";
 import { accountRef, database } from "./admin";
@@ -5,7 +6,6 @@ import { newAccount, type Account, type Identity } from "./wallet";
 import {
   addMonths,
   normalizeWallet,
-  PLANS,
   ServiceError,
   type Cadence,
   type Entitlement,
@@ -24,6 +24,9 @@ export type Invoice = {
   id: string;
   uid: string;
   cadence: Cadence;
+  planId?: string;
+  tier?: PaidTier;
+  monthlyCredits?: number;
   amount: number;
   currency: "USD" | "SAR";
   displayAmount?: number;
@@ -36,7 +39,14 @@ export type Invoice = {
   termEnd?: number;
 };
 const invoices = () => database().collection("payments");
-export async function prepareCheckout(user: Identity, cadence: Cadence) {
+export async function prepareCheckout(
+  user: Identity,
+  cadence: Cadence,
+  planId: unknown,
+) {
+  const plan = findPlan(planId);
+  if (!plan)
+    throw new ServiceError(400, "Choose a valid plan and credit allowance.");
   const config = await apsConfig();
   const invoice = await database().runTransaction(async (tx) => {
     const ref = accountRef(user.uid),
@@ -48,7 +58,7 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
     if (account.wallet.paidWindow)
       throw new ServiceError(
         409,
-        "Your Pro term is active. Renew after it expires; no payment was taken.",
+        "Your paid term is active. Renew after it expires; no payment was taken.",
       );
     if (account.pendingInvoice) {
       const prior = await tx.get(invoices().doc(account.pendingInvoice));
@@ -56,7 +66,9 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
       if (
         previous?.status === "pending" &&
         previous.cadence === cadence &&
-        previous.currency === "SAR"
+        previous.currency === "SAR" &&
+        previous.planId === plan.id &&
+        previous.displayAmount === paymentPrice(cadence, plan.id).displayAmount
       )
         return previous;
       if (
@@ -73,7 +85,10 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
         id,
         uid: user.uid,
         cadence,
-        ...paymentPrice(cadence),
+        planId: plan.id,
+        tier: plan.tier,
+        monthlyCredits: plan.monthlyCredits,
+        ...paymentPrice(cadence, plan.id),
         status: "pending",
         createdAt: Date.now(),
       };
@@ -94,7 +109,7 @@ export async function prepareCheckout(user: Identity, cadence: Cadence) {
         currency: invoice.currency,
         customer_email: user.email,
         return_url: `${canonicalOrigin}/api/billing/callback`,
-        order_description: `fastVEP Pro ${cadence} term - manual renewal`,
+        order_description: `fastVEP ${plan.name} ${plan.monthlyCredits} credits monthly - ${cadence} manual renewal`,
       },
       config,
     ),
@@ -140,7 +155,10 @@ export async function applyCapturedInvoice(
       paymentId: id,
       cadence: invoice.cadence,
       termStart: start,
-      termEnd: addMonths(start, PLANS[invoice.cadence].months),
+      termEnd: addMonths(start, invoice.cadence === "annual" ? 12 : 1),
+      planId: invoice.planId || "research-20",
+      tier: invoice.tier || "research",
+      monthlyCredits: invoice.monthlyCredits ?? 4000,
     };
     if (start > now)
       account.wallet.queuedEntitlements = [...future, entitlement];
@@ -160,6 +178,9 @@ export async function applyCapturedInvoice(
     tx.set(ref, account);
     tx.create(ref.collection("ledger").doc(`payment_${id}`), {
       kind: "subscription",
+      planId: entitlement.planId,
+      tier: entitlement.tier,
+      monthlyCredits: entitlement.monthlyCredits,
       paymentId: id,
       cadence: invoice.cadence,
       amount: invoice.amount,

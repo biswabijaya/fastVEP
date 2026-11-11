@@ -28,9 +28,12 @@ export async function POST(request: Request) {
         400,
         "Confirm the selected term and manual renewal before checkout.",
       );
-    return Response.json(await prepareCheckout(user, body.cadence), {
-      headers: { "Cache-Control": "private, no-store" },
-    });
+    return Response.json(
+      await prepareCheckout(user, body.cadence, body.planId),
+      {
+        headers: { "Cache-Control": "private, no-store" },
+      },
+    );
   } catch (e) {
     return errorResponse(e);
   }

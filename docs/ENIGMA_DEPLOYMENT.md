@@ -64,7 +64,7 @@ The App Hosting compute service account has access to the four `fastvep-aps-*` s
 frontend/node_modules/.bin/tsx scripts/check-payments.mts
 ```
 
-A successful check verifies both the request phrase and response signature against a nonexistent APS reference. It does not test card processing, USD settlement, a live callback, or recurring payments. The initial Pro offering uses manually renewed monthly/annual terms, explicitly disclosed at checkout. Do not alter the shared merchant-wide feedback URL without reviewing its effect on other Enigma payments.
+A successful check verifies both the request phrase and response signature against a nonexistent APS reference. It does not test card processing, SAR settlement, a live callback, or recurring payments. The Research and Clinical offerings uses manually renewed monthly/annual terms, explicitly disclosed at checkout. Do not alter the shared merchant-wide feedback URL without reviewing its effect on other Enigma payments.
 
 Validation for the account/credit changes:
 
@@ -78,3 +78,5 @@ firebase emulators:exec --config firebase.emulators.json --project demo-fastvep 
 Java 21+ is required for these emulators. Tests use only synthetic demo accounts and a local annotation stub. Never set `NEXT_PUBLIC_FASTVEP_EMULATORS=true` for a production build. The demo client enforces localhost, and the payment module refuses production secret access for demo projects.
 
 Develop and push to `biswa`; promote deliberately to `prod-enigma` to roll out. See `PRICING_MODEL.md` for confirmed credit terms, the proposed usage tariff, cost assumptions and payment validation still needed.
+
+The three-tier catalog is in `frontend/src/lib/plans.ts`. Annual purchases cost ten monthly payments and issue twelve monthly credit allocations. Clinical billing inclusions (Clinical, Reporting, AI) are returned by the authenticated account API; cross-application sign-in/approval and automatic provisioning are separate from billing and remain subject to the existing applications’ controls.

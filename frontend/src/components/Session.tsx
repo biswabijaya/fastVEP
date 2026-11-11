@@ -52,6 +52,9 @@ export type Account = {
   dailyRefreshAt: number;
   subscriptionCreditsExpireAt: number | null;
   plan: string;
+  planId: string | null;
+  monthlyCreditAllocation: number;
+  includedServices: { clinical: boolean; reporting: boolean; ai: boolean };
   cadence: string | null;
   paidThrough: number | null;
   email: string;

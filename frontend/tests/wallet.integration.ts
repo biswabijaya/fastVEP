@@ -194,3 +194,47 @@ test("annual rollover persists through repeated account reads without duplicate 
   const saved = await accountRef(u.uid).get();
   assert.equal(saved.data()?.wallet.paidAllocationCount, 3);
 });
+
+test("a captured Clinical invoice grants its frozen selected allowance and included services once", async () => {
+  const { applyCapturedInvoice } = await import("../src/server/payments");
+  const u = { ...user, uid: "clinical-subscriber" },
+    now = Date.now(),
+    id = "fv-clinical-selected";
+  await accountRef(u.uid).set(newAccount(u, now));
+  await database()
+    .collection("payments")
+    .doc(id)
+    .set({
+      id,
+      uid: u.uid,
+      cadence: "monthly",
+      planId: "clinical-2000",
+      tier: "clinical",
+      monthlyCredits: 400000,
+      amount: 750000,
+      currency: "SAR",
+      displayAmount: 200000,
+      status: "pending",
+      createdAt: now,
+    });
+  await applyCapturedInvoice(id, "123456789999", now);
+  const view = await getAccount(u);
+  assert.equal(view.subscriptionCredits, 400000);
+  assert.equal(view.plan, "clinical");
+  assert.deepEqual(view.includedServices, {
+    clinical: true,
+    reporting: true,
+    ai: true,
+  });
+  await applyCapturedInvoice(id, "123456789999", now);
+  assert.equal((await getAccount(u)).subscriptionCredits, 400000);
+  const saved = await accountRef(u.uid).get();
+  const account = saved.data()!;
+  account.wallet.entitlement.termEnd = Date.now() - 1;
+  await accountRef(u.uid).set(account);
+  assert.deepEqual((await getAccount(u)).includedServices, {
+    clinical: false,
+    reporting: false,
+    ai: false,
+  });
+});

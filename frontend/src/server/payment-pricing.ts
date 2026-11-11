@@ -1,10 +1,18 @@
-import { PLANS, type Cadence } from "../lib/credits";
-// Fixed SAR/USD peg: SAR 3.75 per USD. Keep the catalog/display in USD.
-export function paymentPrice(cadence: Cadence) {
+import { type Cadence, ServiceError } from "../lib/credits";
+import { findPlan, planDollars } from "../lib/plans";
+// Fixed SAR/USD peg. The server owns both the plan catalog and settlement amount.
+export function paymentPrice(cadence: Cadence, planId: unknown) {
+  const plan = findPlan(planId);
+  if (!plan)
+    throw new ServiceError(
+      400,
+      "Choose a valid plan and monthly credit allowance.",
+    );
+  const dollars = planDollars(plan, cadence);
   return {
-    amount: PLANS[cadence].dollars * 375,
+    amount: dollars * 375,
     currency: "SAR" as const,
-    displayAmount: PLANS[cadence].dollars * 100,
+    displayAmount: dollars * 100,
     displayCurrency: "USD" as const,
   };
 }
@@ -19,7 +27,7 @@ export function displayPayment(invoice: {
       invoice.displayAmount ??
       (invoice.currency === "USD"
         ? invoice.amount
-        : PLANS[invoice.cadence].dollars * 100),
+        : Math.round((invoice.amount * 4) / 15)),
     currency: "USD",
   };
 }

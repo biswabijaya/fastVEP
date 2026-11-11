@@ -778,3 +778,248 @@ footer a {
 .plan > button {
   width: 100%;
 }
+/* Three-tier credit plans */
+.plans-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: none;
+  gap: 20px;
+  align-items: stretch;
+}
+.plans-three .plan {
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+}
+.plans-three .plan-top {
+  min-height: 130px;
+}
+.plans-three .plan-top p {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.plans-three .price {
+  font-size: 38px;
+  white-space: nowrap;
+}
+.plans-three .billing-detail {
+  min-height: 24px;
+  font-size: 12px;
+  margin-bottom: 22px;
+}
+.plans-three .plan > small {
+  margin-top: auto;
+  padding-top: 14px;
+}
+.plans-three .plan ul {
+  margin-top: 22px;
+}
+.credit-selector {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.credit-selector select {
+  margin-bottom: 10px;
+  font-size: 12px;
+  padding: 10px 8px;
+  min-width: 0;
+}
+.credit-count {
+  font-size: 12px !important;
+  margin-bottom: 12px;
+}
+.credit-count strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.clinical-plan {
+  border-top: 3px solid var(--ink);
+}
+.bundle-badge {
+  display: inline-block;
+  color: var(--ink);
+  background: var(--pale);
+  font-size: 10px;
+  border-radius: 3px;
+  padding: 3px 7px;
+  margin: -4px 0 10px;
+}
+.clinical-plan .eyebrow {
+  margin-bottom: 10px;
+}
+.clinical-plan .plan-top {
+  min-height: 130px;
+}
+.free-credit-summary {
+  min-height: 108px;
+  border: 1px solid var(--border);
+  background: var(--subtle);
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px;
+  margin-bottom: 17px;
+}
+.free-credit-summary strong {
+  font-size: 27px;
+  font-weight: 500;
+}
+.free-credit-summary span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.free-plan .button {
+  margin-top: 22px;
+}
+.plans-three .primary,
+.plans-three .secondary {
+  width: 100%;
+}
+.annual-note {
+  font-size: 12px;
+  margin: 14px 0 0;
+}
+.segmented button span {
+  font-size: 11px;
+  color: var(--teal);
+  margin-left: 4px;
+}
+.included-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 26px;
+  align-items: center;
+  background: var(--ink);
+  color: white;
+  border-radius: 7px;
+  padding: 28px;
+  margin: 0 0 28px;
+}
+.included-banner .eyebrow {
+  color: var(--pale);
+}
+.included-banner p {
+  color: #d5e2e7;
+  font-size: 13px;
+  margin: 0;
+}
+.included-links {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 12px;
+}
+.included-banner .included-links a {
+  color: white;
+}
+.included-banner .included-links span {
+  color: var(--pale);
+}
+.included-services .included-links {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.allocation-note {
+  font-size: 12px;
+  margin-top: -8px;
+}
+@media (max-width: 1050px) {
+  .plans-three {
+    gap: 14px;
+  }
+  .plans-three .plan {
+    padding: 20px;
+  }
+  .plans-three .price {
+    font-size: 31px;
+  }
+  .plans-three .price small {
+    font-size: 11px;
+  }
+  .credit-selector select {
+    font-size: 11px;
+  }
+  .plans-three .plan-top {
+    min-height: 140px;
+  }
+}
+@media (max-width: 850px) {
+  .plans-three {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+  }
+  .plans-three .plan {
+    padding: 28px;
+  }
+  .plans-three .plan-top {
+    min-height: 0;
+    margin-bottom: 20px;
+  }
+  .plans-three .price {
+    font-size: 42px;
+  }
+  .free-credit-summary {
+    min-height: 90px;
+  }
+  .free-plan .button {
+    margin-top: 0;
+  }
+  .included-banner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .plans-three .billing-detail {
+    margin-bottom: 18px;
+  }
+  .credit-selector select {
+    font-size: 13px;
+  }
+}
+@media (max-width: 550px) {
+  .plans-three .plan {
+    padding: 23px;
+  }
+  .plans-three .price {
+    font-size: 36px;
+  }
+  .pricing-heading h1 {
+    font-size: 29px;
+  }
+  .segmented button {
+    padding: 7px 12px;
+  }
+  .included-banner {
+    padding: 22px;
+  }
+  .included-links {
+    font-size: 11px;
+  }
+  .credit-selector select {
+    font-size: 11px;
+  }
+  .plans-three .term-consent {
+    font-size: 11px;
+  }
+}
+.plans-three .plan-top {
+  position: relative;
+}
+.plans-three .bundle-badge {
+  position: absolute;
+  right: 0;
+  top: -3px;
+  margin: 0;
+  font-size: 9px;
+  padding: 3px 5px;
+}
+.clinical-plan .eyebrow {
+  margin-bottom: 12px;
+}
+.plans-three .free-credit-summary {
+  min-height: 96px;
+}
+.plans-three .free-plan .button {
+  margin-top: 0;
+}

@@ -8,10 +8,6 @@ export const VARIANT_UNITS = 1;
 export const MAX_VARIANTS = 1000;
 export const RESULT_TTL_MS = 24 * 60 * 60 * 1000;
 export type Cadence = "monthly" | "annual";
-export const PLANS = {
-  monthly: { dollars: 20, months: 1, monthlyCredits: MONTHLY_CREDITS },
-  annual: { dollars: 240, months: 12, monthlyCredits: MONTHLY_CREDITS },
-} as const;
 export class ServiceError extends Error {
   constructor(
     public status: number,
@@ -102,6 +98,9 @@ export type Entitlement = {
   cadence: Cadence;
   termStart: number;
   termEnd: number;
+  planId?: string;
+  tier?: "research" | "clinical";
+  monthlyCredits?: number;
 };
 export type Wallet = {
   dailyDate: string;
@@ -191,7 +190,8 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
     const issuedCount = offset + 1;
     next.paidRemaining =
       (sameTerm ? next.paidRemaining : 0) +
-      units(MONTHLY_CREDITS) * Math.max(0, issuedCount - previousCount);
+      units(entitlement.monthlyCredits ?? MONTHLY_CREDITS) *
+        Math.max(0, issuedCount - previousCount);
     next.paidAllocationCount = issuedCount;
     // Annual credits share one expiry and refund window for the whole purchased year.
     next.paidWindow = `${entitlement.paymentId}:${entitlement.termStart}`;
@@ -199,7 +199,7 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
   } else {
     if (next.paidWindow !== key) {
       next.paidWindow = key;
-      next.paidRemaining = units(MONTHLY_CREDITS);
+      next.paidRemaining = units(entitlement.monthlyCredits ?? MONTHLY_CREDITS);
     }
     next.paidAllocationCount = 1;
     next.paidExpiresAt = end;
@@ -265,7 +265,20 @@ export function walletView(wallet: Wallet, now: number) {
     totalCredits: credits(current.dailyRemaining + current.paidRemaining),
     dailyRefreshAt: midnight.getTime(),
     subscriptionCreditsExpireAt: current.paidExpiresAt,
-    plan: current.paidWindow ? "pro" : "free",
+    plan: current.paidWindow ? current.entitlement?.tier || "research" : "free",
+    planId: current.paidWindow
+      ? current.entitlement?.planId || "research-20"
+      : null,
+    monthlyCreditAllocation: current.paidWindow
+      ? (current.entitlement?.monthlyCredits ?? MONTHLY_CREDITS)
+      : 0,
+    includedServices: {
+      clinical:
+        !!current.paidWindow && current.entitlement?.tier === "clinical",
+      reporting:
+        !!current.paidWindow && current.entitlement?.tier === "clinical",
+      ai: !!current.paidWindow && current.entitlement?.tier === "clinical",
+    },
     cadence: current.entitlement?.cadence || null,
     paidThrough: current.entitlement?.termEnd || null,
   };

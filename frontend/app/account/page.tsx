@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { INCLUDED_CLINICAL_SERVICES } from "../../src/lib/plans";
 import { useSession } from "../../src/components/Session";
 type Payment = {
   id: string;
   cadence: string;
+  tier: string;
+  monthlyCredits: number;
   amount: number;
   currency: string;
   status: string;
@@ -116,7 +119,13 @@ export default function Usage() {
         </div>
         <div>
           <span>Current plan</span>
-          <strong>{account?.plan === "pro" ? "Pro" : "Free"}</strong>
+          <strong>
+            {account?.plan === "clinical"
+              ? "Clinical"
+              : account?.plan === "research"
+                ? "Research"
+                : "Free"}
+          </strong>
           <small>
             {account?.paidThrough
               ? `Paid through ${new Date(account.paidThrough).toLocaleDateString()} · manual renewal`
@@ -124,6 +133,38 @@ export default function Usage() {
           </small>
         </div>
       </div>
+      {account?.plan !== "free" && account?.monthlyCreditAllocation ? (
+        <p className="allocation-note">
+          {account.monthlyCreditAllocation.toLocaleString()} subscription
+          credits released monthly.
+        </p>
+      ) : null}
+      {account?.includedServices?.clinical && (
+        <section className="panel included-services">
+          <h2>Included with Clinical</h2>
+          <p>
+            No additional subscription charge for these services during your
+            paid term.
+          </p>
+          <div className="included-links">
+            <a
+              href={INCLUDED_CLINICAL_SERVICES.clinical}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Enigma Clinical ↗
+            </a>
+            <a
+              href={INCLUDED_CLINICAL_SERVICES.reporting}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Enigma Reporting ↗
+            </a>
+            <span>AI included</span>
+          </div>
+        </section>
+      )}
       {(message || error) && (
         <p className="notice" role="status">
           {message || error}
@@ -142,6 +183,7 @@ export default function Usage() {
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>Plan</th>
                   <th>Term</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -152,6 +194,12 @@ export default function Usage() {
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td>{new Date(p.createdAt).toLocaleString()}</td>
+                    <td>
+                      {p.tier === "clinical" ? "Clinical" : "Research"}
+                      <small>
+                        {p.monthlyCredits?.toLocaleString()} credits/month
+                      </small>
+                    </td>
                     <td>{p.cadence}</td>
                     <td>
                       ${(p.amount / 100).toFixed(2)} {p.currency}

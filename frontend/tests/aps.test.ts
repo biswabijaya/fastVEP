@@ -63,20 +63,23 @@ test("payment payloads reject nested values and preserve canonical scalar string
 test("SAR settlement preserves USD catalog prices and the exact captured charge", async () => {
   const { paymentPrice, displayPayment } =
     await import("../src/server/payment-pricing");
-  assert.deepEqual(paymentPrice("monthly"), {
+  assert.deepEqual(paymentPrice("monthly", "research-20"), {
     amount: 7500,
     currency: "SAR",
     displayAmount: 2000,
     displayCurrency: "USD",
   });
-  assert.deepEqual(paymentPrice("annual"), {
-    amount: 90000,
+  assert.deepEqual(paymentPrice("annual", "research-20"), {
+    amount: 75000,
     currency: "SAR",
-    displayAmount: 24000,
+    displayAmount: 20000,
     displayCurrency: "USD",
   });
   assert.deepEqual(
-    displayPayment({ cadence: "monthly", ...paymentPrice("monthly") }),
+    displayPayment({
+      cadence: "monthly",
+      ...paymentPrice("monthly", "research-20"),
+    }),
     { amount: 2000, currency: "USD" },
   );
   assert.deepEqual(
