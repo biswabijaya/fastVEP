@@ -10,6 +10,7 @@ name = "fastvep-web"
 path = "src/main.rs"
 
 [dependencies]
+ts-rs = "12"
 # Internal crates
 fastvep-annotate = { workspace = true }
 fastvep-classification = { workspace = true }

@@ -552,7 +552,8 @@ pub async fn load_genome(
     })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../../frontend/src/generated/")]
 pub struct AnnotateRequest {
     vcf: Option<String>,
     /// The genome to answer from, by the name `GET /api/genomes` lists.

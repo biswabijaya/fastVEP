@@ -12,6 +12,7 @@ members = [
     "crates/fastvep-classification",
     "crates/fastvep-cli",
     "crates/fastvep-web",
+    "crates/fastvep-wasm",
 ]
 resolver = "2"
 

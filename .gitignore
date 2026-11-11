@@ -75,3 +75,11 @@ docs/index.html
 # log files from test runs
 *.log
 *.out
+
+/frontend/node_modules/
+/frontend/.next/
+/frontend/*.tsbuildinfo
+/frontend/.env*
+/work/
+
+gha-creds-*.json

@@ -231,7 +231,7 @@ impl PickRequest {
 /// implementations of one wire contract, and the annotation path behind them
 /// has already drifted once (see the module header). Missing keys default to
 /// `false`, so a body that mentions none of them asks for no pick.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize, ts_rs::TS)]
 #[serde(default)]
 pub struct PickFlags {
     pub pick: bool,

@@ -1,0 +1,14 @@
+runConfig:
+  minInstances: 0
+  maxInstances: 3
+  concurrency: 20
+  cpu: 1
+  memoryMiB: 512
+# Set FASTVEP_API_URL to the deployed native Rust backend before enabling annotation.
+env:
+  - variable: FASTVEP_API_URL
+    value: https://fastvep-engine-903636395933.us-central1.run.app
+    availability: [RUNTIME]
+  - variable: FASTVEP_API_AUDIENCE
+    value: https://fastvep-engine-903636395933.us-central1.run.app
+    availability: [RUNTIME]

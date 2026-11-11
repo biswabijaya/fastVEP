@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, biswa, prod-enigma]
   push:
-    branches: [master]
+    branches: [master, biswa, prod-enigma]
 
 permissions:
   contents: read
@@ -72,3 +72,15 @@ jobs:
 
       - name: Run all tests (unit + integration)
         run: cargo test --workspace
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --prefix frontend
+      - run: npm run build --prefix frontend

@@ -6,6 +6,7 @@ license.workspace = true
 description = "Shared annotation engine for fastVEP: loads data and annotates variants"
 
 [dependencies]
+ts-rs = "12"
 fastvep-core = { workspace = true }
 fastvep-genome = { workspace = true }
 fastvep-cache = { workspace = true }
