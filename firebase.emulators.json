@@ -1,0 +1,23 @@
+{
+  "firestore": {
+    "rules": "deploy/fastvep.firestore.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9098
+    },
+    "firestore": {
+      "port": 8088
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true,
+    "storage": {
+      "port": 9198
+    }
+  },
+  "storage": {
+    "rules": "deploy/fastvep.storage.rules"
+  }
+}

@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useSession } from "../src/components/Session";
+import { inspectVcf, quoteUnits, credits } from "../src/lib/credits";
 import type { AnnotateRequest } from "../src/generated/AnnotateRequest";
 import type { AcmgReadiness } from "../src/generated/AcmgReadiness";
 
@@ -22,6 +25,11 @@ type ResultRow = {
   }[];
 };
 type Answer = {
+  billing?: {
+    totalCredits: number;
+    freeCredits: number;
+    subscriptionCredits: number;
+  };
   results: ResultRow[];
   count: number;
   warnings?: string[];
@@ -30,6 +38,52 @@ type Answer = {
 const example = "17\t43124025\t.\tA\tG\t.\tPASS\t.";
 
 export default function Home() {
+  const { user, loading } = useSession();
+  if (loading) return <p role="status">Loading your workspace…</p>;
+  if (!user || !user.emailVerified)
+    return (
+      <section className="landing">
+        <span className="eyebrow">ENIGMA GENOMICS / VARIANT ANNOTATION</span>
+        <h1>
+          From variants
+          <br />
+          to clear consequences.
+        </h1>
+        <p>
+          Explore genes, transcripts and protein changes in a focused annotation
+          workspace.
+        </p>
+        <Link href="/login" className="button primary">
+          {user ? "Verify your email" : "Sign in to annotate"} →
+        </Link>
+        <Link href="/pricing" className="button secondary">
+          Explore pricing
+        </Link>
+        <div className="feature-grid">
+          <article>
+            <strong>GRCh38 · Ensembl 115</strong>
+            <p>Native Rust consequence prediction with ClinVar evidence.</p>
+          </article>
+          <article>
+            <strong>200 free credits daily</strong>
+            <p>Refreshed at UTC midnight. Know the cost before each batch.</p>
+          </article>
+          <article>
+            <strong>Your own workspace</strong>
+            <p>
+              Private results, credit breakdowns and downloadable annotations.
+            </p>
+          </article>
+        </div>
+      </section>
+    );
+  return <Workspace key={user.uid} />;
+}
+function Workspace() {
+  const { api, account, refresh, error: accountError } = useSession();
+  const requestId = useRef<string | null>(null);
+  const requestBody = useRef<string>("");
+  let estimated: number | null = null;
   const [vcf, setVcf] = useState("");
   const [genomes, setGenomes] = useState<Genome[]>([]);
   const [genome, setGenome] = useState("");
@@ -48,6 +102,9 @@ export default function Home() {
     >(),
   );
   const nextId = useRef(0);
+  try {
+    estimated = credits(quoteUnits(inspectVcf(vcf).variantCount));
+  } catch {}
   useEffect(() => {
     const w = new Worker("/validate-worker.js", { type: "module" });
     worker.current = w;
@@ -70,7 +127,7 @@ export default function Home() {
     const controller = new AbortController();
     (async () => {
       try {
-        const response = await fetch("/api/fastvep/status", {
+        const response = await api("/api/fastvep/status", {
           signal: controller.signal,
         });
         const data = await response.json();
@@ -80,7 +137,7 @@ export default function Home() {
           throw new Error(
             "Reference data is being prepared. Annotation will be available when the genome and reference sequence are loaded.",
           );
-        const list = await fetch("/api/fastvep/genomes", {
+        const list = await api("/api/fastvep/genomes", {
           signal: controller.signal,
         });
         const g = await list.json();
@@ -104,7 +161,7 @@ export default function Home() {
         p.reject(new Error("Input checker closed"));
       pending.current.clear();
     };
-  }, []);
+  }, [api]);
   async function annotate() {
     setBusy(true);
     setError("");
@@ -128,14 +185,33 @@ export default function Home() {
         flag_pick_allele: false,
         flag_pick_allele_gene: false,
       };
-      const response = await fetch("/api/fastvep/annotate", {
+      const body = JSON.stringify(request);
+      if (requestBody.current !== body || !requestId.current) {
+        requestId.current = crypto.randomUUID();
+        requestBody.current = body;
+      }
+      let response = await api("/api/fastvep/annotate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": requestId.current!,
+        },
+        body,
         signal: AbortSignal.timeout(100000),
       });
-      const data = await response.json();
-      if (!response.ok)
+      let data = await response.json();
+      const pollDeadline = Date.now() + 310000;
+      while (response.status === 202 && Date.now() < pollDeadline) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        response = await api(`/api/jobs/${requestId.current}`);
+        data = await response.json();
+        if (data.job?.status === "refunded") {
+          requestId.current = null;
+          throw new Error(data.job.failure || "Batch refunded.");
+        }
+      }
+      if (data.code === "batch_refunded") requestId.current = null;
+      if (!response.ok || response.status === 202)
         throw new Error(
           typeof data.error === "string"
             ? data.error
@@ -146,9 +222,11 @@ export default function Home() {
           "The annotation service returned an unexpected response.",
         );
       setAnswer(data);
+      requestId.current = null;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      await refresh();
       setBusy(false);
     }
   }
@@ -165,202 +243,230 @@ export default function Home() {
   }
   return (
     <>
-      <header>
-        <a className="brand" href="/">
-          <span className="brand-icon">fV</span>
-          <span>
-            fast<span className="accent">VEP</span>
-          </span>
-        </a>
-        <span className="organization">ENIGMA GENOMICS</span>
-        <a
-          href="https://github.com/biswabijaya/fastVEP"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Source ↗
-        </a>
-      </header>
-      <main>
-        <section className="intro">
+      <div className="page-heading">
+        <div>
           <span className="eyebrow">VARIANT EFFECT PREDICTOR</span>
-          <h1>
-            From variants
-            <br />
-            to consequences.
-          </h1>
-          <p>
-            Explore the effect of genetic variants on genes, transcripts, and
-            proteins.
-          </p>
-        </section>
-        <div className={`service ${available ? "ready" : ""}`} role="status">
-          <span className="dot" />
-          {status}
+          <h1>Annotation workspace</h1>
+          <p>Submit VCF records and explore their predicted consequences.</p>
         </div>
-        <section className="panel">
+        <Link className="button secondary" href="/account">
+          Usage & results →
+        </Link>
+      </div>
+      <div className="wallet-strip">
+        <div>
+          <span>Daily free credits</span>
+          <strong>{account?.dailyCredits.toLocaleString() ?? "—"}</strong>
+          <small>Reset at 00:00 UTC</small>
+        </div>
+        <div>
+          <span>Subscription credits</span>
+          <strong>
+            {account?.subscriptionCredits.toLocaleString() ?? "—"}
+          </strong>
+          <small>Free credits are used first</small>
+        </div>
+        <div>
+          <span>Batch pricing</span>
+          <strong>150 + 0.01 / variant</strong>
+          <small>Each alternate allele counts as one variant</small>
+        </div>
+      </div>
+      {accountError && (
+        <p role="alert" className="error">
+          {accountError}
+        </p>
+      )}
+      <div className={`service ${available ? "ready" : ""}`} role="status">
+        <span className="dot" />
+        {status}
+      </div>
+      <section className="panel">
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">01 / INPUT</span>
+            <h2>Annotate variants</h2>
+          </div>
+          <button
+            className="quiet"
+            onClick={() => {
+              setVcf(example);
+              setAnswer(null);
+            }}
+          >
+            Load GRCh38 example
+          </button>
+        </div>
+        <div className="field">
+          <label htmlFor="genome">Reference genome</label>
+          <select
+            id="genome"
+            value={genome}
+            disabled={!available || busy}
+            onChange={(e) => {
+              setGenome(e.target.value);
+              setAcmg(false);
+              setAnswer(null);
+            }}
+          >
+            {genomes.length ? (
+              genomes.map((g) => (
+                <option key={g.name} value={g.name}>
+                  {g.label || g.name}
+                </option>
+              ))
+            ) : (
+              <option value="">Reference genomes are being prepared</option>
+            )}
+          </select>
+        </div>
+        <div className="input-label">
+          <label htmlFor="vcf">VCF records</label>
+          <label className="file">
+            Upload .vcf
+            <input
+              type="file"
+              accept=".vcf,.txt"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  if (f.size > 1000000) {
+                    setError("Please keep interactive input below 1 MB.");
+                    return;
+                  }
+                  setVcf(await f.text());
+                  setAnswer(null);
+                }
+              }}
+            />
+          </label>
+        </div>
+        <textarea
+          id="vcf"
+          value={vcf}
+          onChange={(e) => setVcf(e.target.value)}
+          spellCheck={false}
+          placeholder={
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n17\t43124025\t.\tA\tG\t.\tPASS\t."
+          }
+        />
+        <p className="hint">
+          Tab-separated VCF · Up to 1,000 variants · Choose the reference build
+          used for your VCF.
+        </p>
+        <div className="options">
+          <label>
+            <input
+              type="checkbox"
+              checked={pick}
+              onChange={(e) => setPick(e.target.checked)}
+            />{" "}
+            One consequence per variant
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={acmg}
+              disabled={!genomes.find((g) => g.name === genome)?.acmg?.ready}
+              onChange={(e) => setAcmg(e.target.checked)}
+            />{" "}
+            ACMG classification
+          </label>
+        </div>
+        <div className="submit-row">
+          <span>
+            {estimated !== null
+              ? `This batch: ${estimated.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits · $${(estimated / 200).toFixed(4)} service value`
+              : "150 credits per batch + 0.01 credit per alternate allele"}
+            <small>
+              Browser input check · Private results available for 24 hours
+            </small>
+          </span>
+          <button
+            className="primary"
+            disabled={
+              !available ||
+              busy ||
+              !vcf.trim() ||
+              estimated === null ||
+              !account ||
+              estimated > account.totalCredits
+            }
+            onClick={annotate}
+          >
+            {busy ? "Annotating…" : "Annotate variants →"}
+          </button>
+        </div>
+        {estimated !== null && account && estimated > account.totalCredits && (
+          <p className="notice">
+            Not enough credits. Wait for the daily refresh or{" "}
+            <Link href="/pricing">explore a subscription</Link>.
+          </p>
+        )}
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </section>
+      {answer && (
+        <section className="panel results">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">01 / INPUT</span>
-              <h2>Annotate variants</h2>
+              <span className="eyebrow">02 / RESULTS</span>
+              <h2>
+                {answer.count.toLocaleString()} annotated{" "}
+                {answer.count === 1 ? "variant" : "variants"}
+              </h2>
             </div>
-            <button
-              className="quiet"
-              onClick={() => {
-                setVcf(example);
-                setAnswer(null);
-              }}
-            >
-              Load GRCh38 example
+            <button className="quiet" onClick={download}>
+              Download JSON ↓
             </button>
           </div>
-          <div className="field">
-            <label htmlFor="genome">Reference genome</label>
-            <select
-              id="genome"
-              value={genome}
-              disabled={!available || busy}
-              onChange={(e) => {
-                setGenome(e.target.value);
-                setAcmg(false);
-                setAnswer(null);
-              }}
-            >
-              {genomes.length ? (
-                genomes.map((g) => (
-                  <option key={g.name} value={g.name}>
-                    {g.label || g.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">Reference genomes are being prepared</option>
-              )}
-            </select>
-          </div>
-          <div className="input-label">
-            <label htmlFor="vcf">VCF records</label>
-            <label className="file">
-              Upload .vcf
-              <input
-                type="file"
-                accept=".vcf,.txt"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    if (f.size > 1000000) {
-                      setError("Please keep interactive input below 1 MB.");
-                      return;
-                    }
-                    setVcf(await f.text());
-                    setAnswer(null);
-                  }
-                }}
-              />
-            </label>
-          </div>
-          <textarea
-            id="vcf"
-            value={vcf}
-            onChange={(e) => setVcf(e.target.value)}
-            spellCheck={false}
-            placeholder={
-              "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n17\t43124025\t.\tA\tG\t.\tPASS\t."
-            }
-          />
-          <p className="hint">
-            Tab-separated VCF · Up to 1,000 variants · Choose the reference
-            build used for your VCF.
-          </p>
-          <div className="options">
-            <label>
-              <input
-                type="checkbox"
-                checked={pick}
-                onChange={(e) => setPick(e.target.checked)}
-              />{" "}
-              One consequence per variant
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={acmg}
-                disabled={!genomes.find((g) => g.name === genome)?.acmg?.ready}
-                onChange={(e) => setAcmg(e.target.checked)}
-              />{" "}
-              ACMG classification
-            </label>
-          </div>
-          <div className="submit-row">
-            <span>Input format is checked locally in your browser.</span>
-            <button
-              className="primary"
-              disabled={!available || busy || !vcf.trim()}
-              onClick={annotate}
-            >
-              {busy ? "Annotating…" : "Annotate variants →"}
-            </button>
-          </div>
-          {error && (
-            <p className="error" role="alert">
-              {error}
+          {answer.billing && (
+            <p className="notice">
+              {answer.billing.totalCredits} credits used:{" "}
+              {answer.billing.freeCredits} daily +{" "}
+              {answer.billing.subscriptionCredits} subscription. Download your
+              results within 24 hours.
             </p>
           )}
+          {answer.warnings?.map((w, i) => (
+            <p className="error" key={i}>
+              {w}
+            </p>
+          ))}
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Variant</th>
+                  <th>Gene</th>
+                  <th>Consequence</th>
+                  <th>Transcript</th>
+                  <th>HGVS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {answer.results.map((r, i) => {
+                  const t = r.transcript_consequences?.[0];
+                  return (
+                    <tr key={i}>
+                      <td>
+                        {r.seq_region_name}:{r.start} {r.allele_string}
+                      </td>
+                      <td>{t?.gene_symbol || "—"}</td>
+                      <td>{r.most_severe_consequence || "—"}</td>
+                      <td>{t?.transcript_id || "—"}</td>
+                      <td>{t?.hgvsc || t?.hgvsp || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
-        {answer && (
-          <section className="panel results">
-            <div className="panel-heading">
-              <div>
-                <span className="eyebrow">02 / RESULTS</span>
-                <h2>
-                  {answer.count.toLocaleString()} annotated{" "}
-                  {answer.count === 1 ? "variant" : "variants"}
-                </h2>
-              </div>
-              <button className="quiet" onClick={download}>
-                Download JSON ↓
-              </button>
-            </div>
-            {answer.warnings?.map((w, i) => (
-              <p className="error" key={i}>
-                {w}
-              </p>
-            ))}
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Variant</th>
-                    <th>Gene</th>
-                    <th>Consequence</th>
-                    <th>Transcript</th>
-                    <th>HGVS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {answer.results.map((r, i) => {
-                    const t = r.transcript_consequences?.[0];
-                    return (
-                      <tr key={i}>
-                        <td>
-                          {r.seq_region_name}:{r.start} {r.allele_string}
-                        </td>
-                        <td>{t?.gene_symbol || "—"}</td>
-                        <td>{r.most_severe_consequence || "—"}</td>
-                        <td>{t?.transcript_id || "—"}</td>
-                        <td>{t?.hgvsc || t?.hgvsp || "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-        <footer>
-          <span>fastVEP · Enigma Genomics</span>
-          <span>GRCh38 · Ensembl 115 · ClinVar</span>
-        </footer>
-      </main>
+      )}
     </>
   );
 }

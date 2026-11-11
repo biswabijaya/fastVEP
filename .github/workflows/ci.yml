@@ -86,4 +86,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --prefix frontend
+      - run: npm test --prefix frontend
       - run: npm run build --prefix frontend
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify authentication, credits, payments and private results
+        run: npx --yes firebase-tools@15.35.0 emulators:exec --config firebase.emulators.json --project demo-fastvep --only auth,firestore,storage 'npm run test:integration --prefix frontend'

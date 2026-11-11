@@ -53,3 +53,28 @@ The live service reported 509,650 transcripts, Ensembl 115 GRCh38, and ClinVar
 release 2026-11-08 (4,619,144 database records). A synthetic
 `17:43124025 A>G` request through App Hosting returned BRCA1 with HGVS and ClinVar
 annotations. Direct anonymous requests to the engine were refused with HTTP 403.
+
+## Account and credit release
+
+The account/credit change uses the named Firestore database `fastvep` and the private bucket `fastvep-results-903636395933`, both in `us-central1`. Firebase Authentication is shared with the existing project; fastVEP stores account and wallet documents in its own database. Deploy only the configured named database rules with `firebase deploy --only firestore:rules --project enigmagenomics`.
+
+The App Hosting compute service account has access to the four `fastvep-aps-*` secrets. Payment credentials are read at runtime from Secret Manager; secret values must never be placed in App Hosting public variables, source files, or client code. Check the provider without making a purchase:
+
+```sh
+frontend/node_modules/.bin/tsx scripts/check-payments.mts
+```
+
+A successful check verifies both the request phrase and response signature against a nonexistent APS reference. It does not test card processing, USD settlement, a live callback, or recurring payments. The initial Pro offering uses manually renewed monthly/annual terms, explicitly disclosed at checkout. Do not alter the shared merchant-wide feedback URL without reviewing its effect on other Enigma payments.
+
+Validation for the account/credit changes:
+
+```sh
+npm ci --prefix frontend
+npm test --prefix frontend
+npm run build --prefix frontend
+firebase emulators:exec --config firebase.emulators.json --project demo-fastvep --only auth,firestore,storage 'npm run test:integration --prefix frontend'
+```
+
+Java 21+ is required for these emulators. Tests use only synthetic demo accounts and a local annotation stub. Never set `NEXT_PUBLIC_FASTVEP_EMULATORS=true` for a production build. The demo client enforces localhost, and the payment module refuses production secret access for demo projects.
+
+Develop and push to `biswa`; promote deliberately to `prod-enigma` to roll out. See `PRICING_MODEL.md` for confirmed credit terms, the proposed usage tariff, cost assumptions and payment validation still needed.

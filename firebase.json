@@ -1,1 +1,15 @@
-{"apphosting":[{"backendId":"fastvep","rootDir":"frontend","ignore":["node_modules",".git",".next"]}]}
+{
+  "apphosting": [
+    {
+      "backendId": "fastvep",
+      "rootDir": "frontend",
+      "ignore": ["node_modules", ".git", ".next"]
+    }
+  ],
+  "firestore": [
+    {
+      "database": "fastvep",
+      "rules": "deploy/fastvep.firestore.rules"
+    }
+  ]
+}
