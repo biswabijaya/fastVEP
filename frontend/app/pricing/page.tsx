@@ -83,12 +83,12 @@ export default function Pricing() {
           <div className="price">
             $0<small> / forever</small>
           </div>
-          <p>200 credits every day</p>
+          <p>300 credits every day</p>
           <Link className="button secondary" href={user ? "/" : "/login"}>
             {user ? "Open workspace" : "Get started"}
           </Link>
           <ul>
-            <li>$1 worth of annotation credits daily</li>
+            <li>Free annotation credits refreshed daily</li>
             <li>Resets at 00:00 UTC; unused credits expire</li>
             <li>Up to 1,000 alternate alleles per batch</li>
             <li>Private JSON results available for 24 hours</li>
@@ -141,7 +141,7 @@ export default function Pricing() {
                 ? "Unused credits roll over each month until your annual term ends"
                 : "Unused credits expire at the end of your monthly term"}
             </li>
-            <li>200 daily free credits included and used first</li>
+            <li>300 daily free credits included and used first</li>
           </ul>
           <small>
             {enabled
@@ -162,7 +162,7 @@ export default function Pricing() {
           <p>
             150 credits per batch + 0.01 credit per alternate allele.
             <br />
-            $1 = 200 credits. Each batch supports up to 1,000 alternate alleles.
+            Each batch supports up to 1,000 alternate alleles.
           </p>
         </div>
         <label>
@@ -179,7 +179,7 @@ export default function Pricing() {
         </label>
         <div className="estimate">
           <strong>{(150 + count * 0.01).toFixed(2)} credits</strong>
-          <span>${((150 + count * 0.01) / 200).toFixed(4)} service value</span>
+          <span>Daily free credits are used first</span>
         </div>
       </section>
       <section className="faq">

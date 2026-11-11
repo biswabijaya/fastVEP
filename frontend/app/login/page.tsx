@@ -81,7 +81,7 @@ export default function Login() {
       <span className="eyebrow">WELCOME TO FASTVEP</span>
       <h1>{register ? "Create your account" : "Sign in to annotate"}</h1>
       <p>
-        200 free credits every day. Your results and usage belong to your
+        300 free credits every day. Your results and usage belong to your
         account.
       </p>
       <button

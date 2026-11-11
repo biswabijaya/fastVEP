@@ -1,6 +1,6 @@
 /** Monetary arithmetic uses integer hundredths of a credit. */
 export const UNITS_PER_CREDIT = 100;
-export const DAILY_CREDITS = 200;
+export const DAILY_CREDITS = 300;
 export const MONTHLY_CREDITS = 4000;
 export const CREDITS_PER_USD = 200;
 export const BATCH_CREDITS = 150;
@@ -106,6 +106,7 @@ export type Entitlement = {
 export type Wallet = {
   dailyDate: string;
   dailyRemaining: number;
+  dailyAllowance?: number;
   paidWindow: string | null;
   paidRemaining: number;
   paidExpiresAt: number | null;
@@ -117,6 +118,7 @@ export function emptyWallet(now: number): Wallet {
   return {
     dailyDate: utcDay(now),
     dailyRemaining: units(DAILY_CREDITS),
+    dailyAllowance: units(DAILY_CREDITS),
     paidWindow: null,
     paidRemaining: 0,
     paidExpiresAt: null,
@@ -128,6 +130,15 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
   if (next.dailyDate !== utcDay(now)) {
     next.dailyDate = utcDay(now);
     next.dailyRemaining = units(DAILY_CREDITS);
+    next.dailyAllowance = units(DAILY_CREDITS);
+  } else {
+    // Existing wallets received 200 credits before the allowance was tracked.
+    const previousAllowance = next.dailyAllowance ?? units(200);
+    next.dailyRemaining += Math.max(
+      0,
+      units(DAILY_CREDITS) - previousAllowance,
+    );
+    next.dailyAllowance = Math.max(previousAllowance, units(DAILY_CREDITS));
   }
   if (!next.entitlement || now >= next.entitlement.termEnd) {
     const queue = [...(next.queuedEntitlements || [])].sort(

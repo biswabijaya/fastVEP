@@ -36,16 +36,16 @@ test("wallet transactions serialize concurrent jobs, replay once, and refund onc
   ]);
   assert.equal(outcomes.filter((x) => x.status === "fulfilled").length, 1);
   const winner = outcomes[0].status === "fulfilled" ? a : b;
-  assert.equal((await getAccount(user)).dailyCredits, 90);
+  assert.equal((await getAccount(user)).dailyCredits, 190);
   assert.equal((await reserveBatch(user, input(winner))).replay, true);
-  assert.equal((await getAccount(user)).dailyCredits, 90);
+  assert.equal((await getAccount(user)).dailyCredits, 190);
   await assert.rejects(
     reserveBatch(user, { ...input(winner), fingerprint: "different" }),
     /different batch/,
   );
   await settleBatch(user.uid, winner, { failure: "Test failure" });
   await settleBatch(user.uid, winner, { failure: "Test failure" });
-  assert.equal((await getAccount(user)).dailyCredits, 200);
+  assert.equal((await getAccount(user)).dailyCredits, 300);
 });
 test("expired leases return credits and release the batch lock", async () => {
   const u = { ...user, uid: "expired-job" };
@@ -54,9 +54,9 @@ test("expired leases return credits and release the batch lock", async () => {
     .collection("jobs")
     .doc(a)
     .update({ leaseUntil: Date.now() - 1 });
-  assert.equal((await getAccount(u)).dailyCredits, 200);
+  assert.equal((await getAccount(u)).dailyCredits, 300);
   await reserveBatch(u, input(b));
-  assert.equal((await getAccount(u)).dailyCredits, 90);
+  assert.equal((await getAccount(u)).dailyCredits, 190);
 });
 test("paid reservations consume daily first and successful settlement does not double debit", async () => {
   const u = { ...user, uid: "paid-wallet" },

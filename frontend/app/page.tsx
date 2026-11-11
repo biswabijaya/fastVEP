@@ -65,7 +65,7 @@ export default function Home() {
             <p>Native Rust consequence prediction with ClinVar evidence.</p>
           </article>
           <article>
-            <strong>200 free credits daily</strong>
+            <strong>300 free credits daily</strong>
             <p>Refreshed at UTC midnight. Know the cost before each batch.</p>
           </article>
           <article>
@@ -376,7 +376,7 @@ function Workspace() {
         <div className="submit-row">
           <span>
             {estimated !== null
-              ? `This batch: ${estimated.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits · $${(estimated / 200).toFixed(4)} service value`
+              ? `This batch: ${estimated.toLocaleString(undefined, { maximumFractionDigits: 2 })} credits`
               : "150 credits per batch + 0.01 credit per alternate allele"}
             <small>
               Browser input check · Private results available for 24 hours

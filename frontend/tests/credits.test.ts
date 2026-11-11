@@ -43,7 +43,7 @@ test("insufficient credits do not change either balance", () => {
 });
 test("daily refresh expires unused credits without accumulating them", () => {
   const wallet = { ...emptyWallet(now), dailyRemaining: units(80) };
-  assert.equal(normalizeWallet(wallet, now + 2000).dailyRemaining, units(200));
+  assert.equal(normalizeWallet(wallet, now + 2000).dailyRemaining, units(300));
   assert.equal(walletView(wallet, now).dailyRefreshAt, Date.UTC(2026, 10, 12));
 });
 test("annual plans release credits monthly and preserve unused credits until term expiry", () => {
@@ -77,13 +77,13 @@ test("refunds return only credits that have not expired", () => {
     paidWindow: "old",
     paidRemaining: units(100),
   };
-  const result = debitWallet(wallet, units(250));
+  const result = debitWallet(wallet, units(350));
   const later = normalizeWallet(result.wallet, now + 2000);
-  assert.equal(refundWallet(later, result.debit).dailyRemaining, units(200));
+  assert.equal(refundWallet(later, result.debit).dailyRemaining, units(300));
   assert.equal(refundWallet(later, result.debit).paidRemaining, 0);
   assert.equal(
     refundWallet(result.wallet, result.debit).dailyRemaining,
-    units(200),
+    units(300),
   );
   assert.equal(
     refundWallet(result.wallet, result.debit).paidRemaining,
@@ -158,4 +158,16 @@ test("monthly credits expire and a new annual term does not inherit the previous
     addMonths(start, 12),
   );
   assert.equal(renewed.paidRemaining, units(4000));
+});
+
+test("increasing the daily allowance tops up old wallets once without resetting usage", () => {
+  const old = {
+    ...emptyWallet(now),
+    dailyAllowance: undefined,
+    dailyRemaining: units(40),
+  };
+  const updated = normalizeWallet(old, now);
+  assert.equal(updated.dailyRemaining, units(140));
+  assert.equal(normalizeWallet(updated, now).dailyRemaining, units(140));
+  assert.equal(normalizeWallet(updated, now + 2000).dailyRemaining, units(300));
 });

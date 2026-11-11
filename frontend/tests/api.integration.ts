@@ -112,7 +112,7 @@ test("quotes do not debit, completed retries do not charge, and downloads are pr
   assert.equal(q.status, 200);
   assert.equal(
     (await request("/api/account").then((r) => r.json())).account.dailyCredits,
-    200,
+    300,
   );
   const id = "api-batch-aaaaaaaaaaaaaaaa";
   const r = await request("/api/fastvep/annotate", { vcf }, id);
@@ -121,7 +121,7 @@ test("quotes do not debit, completed retries do not charge, and downloads are pr
   assert.equal(result.billing.totalCredits, 150.01);
   assert.equal(
     (await request("/api/account").then((r) => r.json())).account.dailyCredits,
-    49.99,
+    149.99,
   );
   assert.equal(
     (await request("/api/fastvep/annotate", { vcf }, id)).status,
@@ -160,7 +160,7 @@ test("engine failures refund credits and never expose a result", async () => {
         (r) => r.json(),
       )
     ).account.dailyCredits,
-    200,
+    300,
   );
   const history = await request(
     `/api/jobs/${id}`,
