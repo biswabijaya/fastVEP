@@ -27,7 +27,8 @@ reference directory. ClinVar is captured at image build time; retain the image
 digest for reproducibility. Rebuilding references can change ClinVar results.
 
 Build the engine with `gcloud builds submit --region us-central1 --config deploy/cloudbuild.yaml`.
-Deploy the resulting image to the private `fastvep-engine` Cloud Run service,
+Deploy the resulting image with `scripts/deploy-engine.sh IMAGE_URI` to the
+private `fastvep-engine` Cloud Run service,
 then configure FASTVEP_API_URL and FASTVEP_API_AUDIENCE in frontend/apphosting.yaml.
 Engine reference rebuilds are a separate operator action; frontend promotions reuse
 the deployed engine. Pin a tested image digest when updating the engine.
@@ -41,3 +42,6 @@ and Firebase rollout, then verify status and a synthetic annotation through the 
 
 The Firebase Developer Connect GitHub connection is not used by this deployment.
 Production deployment is controlled by the branch-restricted GitHub Actions workflow.
+
+Usage counters are per instance and reset when an instance restarts. They are not
+a persistent audit trail.
