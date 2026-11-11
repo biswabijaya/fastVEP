@@ -89,6 +89,8 @@ function Workspace() {
   const [genome, setGenome] = useState("");
   const [available, setAvailable] = useState(false);
   const [status, setStatus] = useState("Connecting to annotation service…");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
+  const [connecting, setConnecting] = useState(true);
   const [pick, setPick] = useState(true);
   const [acmg, setAcmg] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -125,6 +127,12 @@ function Workspace() {
       pending.current.clear();
     };
     const controller = new AbortController();
+    setConnecting(true);
+    setStatus("Connecting to annotation service…");
+    const warming = window.setTimeout(() => {
+      setStatus("Starting the annotation service and loading reference data. This can take up to two minutes after a period of inactivity…");
+    }, 8000);
+    const deadline = window.setTimeout(() => controller.abort(), 120000);
     (async () => {
       try {
         const response = await api("/api/fastvep/status", {
@@ -147,13 +155,19 @@ function Workspace() {
         setAvailable(true);
         setStatus(`Ready · VEP ${data.version}`);
       } catch (e) {
-        if (!controller.signal.aborted)
-          setStatus(
-            e instanceof Error ? e.message : "Annotation service unavailable",
-          );
+        if (controller.signal.aborted)
+          setStatus("The connection took too long. Please retry.");
+        else
+          setStatus(e instanceof Error ? e.message : "Annotation service unavailable");
+      } finally {
+        window.clearTimeout(warming);
+        window.clearTimeout(deadline);
+        setConnecting(false);
       }
     })();
     return () => {
+      window.clearTimeout(warming);
+      window.clearTimeout(deadline);
       controller.abort();
       w.terminate();
       worker.current = null;
@@ -161,7 +175,7 @@ function Workspace() {
         p.reject(new Error("Input checker closed"));
       pending.current.clear();
     };
-  }, [api]);
+  }, [api, connectionAttempt]);
   async function annotate() {
     setBusy(true);
     setError("");
@@ -280,6 +294,11 @@ function Workspace() {
       <div className={`service ${available ? "ready" : ""}`} role="status">
         <span className="dot" />
         {status}
+        {!available && !connecting && (
+          <button type="button" className="button secondary" onClick={() => setConnectionAttempt((n) => n + 1)}>
+            Retry connection
+          </button>
+        )}
       </div>
       <section className="panel">
         <div className="panel-heading">
