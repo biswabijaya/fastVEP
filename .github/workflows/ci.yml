@@ -73,6 +73,9 @@ jobs:
       - name: Run all tests (unit + integration)
         run: cargo test --workspace
 
+      - name: Verify generated frontend contracts
+        run: git diff --exit-code -- frontend/src/generated
+
   frontend:
     runs-on: ubuntu-latest
     steps:

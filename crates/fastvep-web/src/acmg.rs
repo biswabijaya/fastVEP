@@ -21,7 +21,8 @@ use fastvep_classification::{LoadedSources, Source, SourceInfo, SourceScope, REF
 use serde::Serialize;
 
 /// The verdict for one genome.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, ts_rs::TS)]
+#[ts(export, export_to = "../../../frontend/src/generated/")]
 pub struct AcmgReadiness {
     /// Every source of the reference stack is loaded: what the benchmark of the paper had, and
     /// the only state in which a classification is comparable with it.
@@ -39,10 +40,12 @@ pub struct AcmgReadiness {
 /// A source of the reference stack that a classification would be made without: one that is not
 /// loaded, or one that is loaded and holds only some of the chromosomes of the genome, which the
 /// label and the effect then say.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, ts_rs::TS)]
+#[ts(export, export_to = "../../../frontend/src/generated/")]
 pub struct MissingSource {
     pub id: &'static str,
     pub label: String,
+    #[ts(type = "string")]
     pub scope: SourceScope,
     pub drives: &'static [&'static str],
     pub without: String,

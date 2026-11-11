@@ -45,3 +45,11 @@ Production deployment is controlled by the branch-restricted GitHub Actions work
 
 Usage counters are per instance and reset when an instance restarts. They are not
 a persistent audit trail.
+
+## Initial verified reference image
+
+Engine image digest: `sha256:2baab591672148ff0356d557605fc832f0cd1f93730a5e94e1bca1ead9c2ddaa`.
+The live service reported 509,650 transcripts, Ensembl 115 GRCh38, and ClinVar
+release 2026-11-08 (4,619,144 database records). A synthetic
+`17:43124025 A>G` request through App Hosting returned BRCA1 with HGVS and ClinVar
+annotations. Direct anonymous requests to the engine were refused with HTTP 403.

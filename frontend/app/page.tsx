@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import type { AnnotateRequest } from "../src/generated/AnnotateRequest";
+import type { AcmgReadiness } from "../src/generated/AcmgReadiness";
 
 type Genome = {
   name: string;
   label?: string;
-  acmg?: boolean;
+  acmg?: AcmgReadiness;
   loaded?: boolean;
 };
 type ResultRow = {
@@ -283,7 +284,7 @@ export default function Home() {
               <input
                 type="checkbox"
                 checked={acmg}
-                disabled={!genomes.find((g) => g.name === genome)?.acmg}
+                disabled={!genomes.find((g) => g.name === genome)?.acmg?.ready}
                 onChange={(e) => setAcmg(e.target.checked)}
               />{" "}
               ACMG classification
@@ -310,7 +311,10 @@ export default function Home() {
             <div className="panel-heading">
               <div>
                 <span className="eyebrow">02 / RESULTS</span>
-                <h2>{answer.count.toLocaleString()} annotated variants</h2>
+                <h2>
+                  {answer.count.toLocaleString()} annotated{" "}
+                  {answer.count === 1 ? "variant" : "variants"}
+                </h2>
               </div>
               <button className="quiet" onClick={download}>
                 Download JSON ↓
@@ -354,7 +358,7 @@ export default function Home() {
         )}
         <footer>
           <span>fastVEP · Enigma Genomics</span>
-          <span>Rust annotation engine · Reference-aware results</span>
+          <span>GRCh38 · Ensembl 115 · ClinVar</span>
         </footer>
       </main>
     </>
