@@ -1,4 +1,4 @@
-# fastVEP pricing, credits and payment launch
+# VEP pricing, credits and payment launch
 
 Current terms, 2026-11-11. All subscriptions are paid manually for one purchased term. No automatic renewal, stored-card billing or recurring charges are enabled. Customer-facing prices and payment history remain USD; Amazon Payment Services receives SAR settlement at 3.75 SAR/USD. No live card purchase has been attempted.
 
@@ -10,7 +10,7 @@ Current terms, 2026-11-11. All subscriptions are paid manually for one purchased
 | Research | $20–$200 | $200–$2,000 | 4,000–40,000 credits |
 | Clinical | $200–$20,000 | $2,000–$200,000 | 40,000–4,000,000 credits |
 
-Annual subscriptions charge **ten times the monthly price** for twelve months of access and twelve monthly credit allocations: pay for ten months, get two months free (16.67% off twelve monthly payments). The page shows a monthly equivalent and the full annual payment, so no monthly collection is implied. All selected options use the existing base rate of 200 credits per monthly-plan dollar; annual subscribers receive the same monthly credit allocation during the two free months.
+Annual subscriptions charge **ten times the monthly price** for twelve months of access and twelve monthly credit allocations: pay for ten months, get two months free (16.67% off twelve monthly payments). Annual mode shows the full yearly amount as the primary price (for example $200/year and $2,000/year), including in the credit selectors. Monthly mode shows monthly prices. All selected options use the existing base rate of 200 credits per monthly-plan dollar; annual subscribers receive the same monthly credit allocation during the two free months.
 
 Research monthly options: $20 / $40 / $60 / $80 / $100 / $150 / $200, corresponding to 4,000 / 8,000 / 12,000 / 16,000 / 20,000 / 30,000 / 40,000 credits.
 
@@ -28,7 +28,7 @@ Every Clinical plan includes, at no additional subscription charge:
 
 The authenticated account response derives `includedServices.clinical`, `.reporting` and `.ai` from the active paid Clinical entitlement. These are false for Free/Research and after expiry or subscription revocation. The account page shows the bundle and links for active Clinical subscribers. Inclusion is a billing entitlement, not an administrator role or a promise of unlimited compute.
 
-**Cross-application onboarding is not automated by this change.** The linked services retain their existing authentication and approval controls. The SGP AI copilot currently requires approved accounts and has per-account budgets; these controls have not been removed or bypassed. The other applications do not yet consume fastVEP's billing entitlement automatically. Before selling Clinical as an automatically activated bundle, connect their approval/provisioning workflow to the paid entitlement (with expiry/revocation) or provision through the existing approved onboarding process. No unrelated application's access rules or deployment were changed.
+**Cross-application onboarding is not automated by this change.** The linked services retain their existing authentication and approval controls. The SGP AI copilot currently requires approved accounts and has per-account budgets; these controls have not been removed or bypassed. The other applications do not yet consume VEP's billing entitlement automatically. Before selling Clinical as an automatically activated bundle, connect their approval/provisioning workflow to the paid entitlement (with expiry/revocation) or provision through the existing approved onboarding process. No unrelated application's access rules or deployment were changed.
 
 ## Credit expiry and consumption
 
@@ -72,7 +72,7 @@ The current production APS request and response phrases were retrieved from the 
 
 Checkout, signed callbacks/webhooks, independent CHECK_STATUS verification, owner-only payment reconciliation, idempotent capture attribution and refund revocation are implemented. New invoices settle in SAR, display USD, and grant their frozen selected monthly allowance only after server confirmation. For example, base Research annual charges SAR 750.00 (75000 halalas) for the displayed $200. The maximum Clinical annual amount is $200,000 -> SAR 750,000.00 (75000000 halalas).
 
-The signed checkout has its own `/api/billing/callback` return URL. `/api/billing/webhook` is implemented, but the shared merchant-wide notification destination was not changed because it serves existing Enigma payments. Customers can use authenticated “Check payment” if a return is interrupted. A real approved card purchase and SAR settlement have not been exercised. APS's own checkout and the bank may display the actual SAR charge; fastVEP does not control those screens.
+The signed checkout has its own `/api/billing/callback` return URL. `/api/billing/webhook` is implemented, but the shared merchant-wide notification destination was not changed because it serves existing Enigma payments. Customers can use authenticated “Check payment” if a return is interrupted. A real approved card purchase and SAR settlement have not been exercised. APS's own checkout and the bank may display the actual SAR charge; VEP does not control those screens.
 
 All development goes to `biswa`; production remains on `prod-enigma` until intentional promotion. App Hosting, engine, named database and result bucket stay in `us-central1`, project `enigmagenomics`, domain fastvep.enigmagenomics.com. Emulator tests use only synthetic demo users and data.
 
@@ -81,3 +81,20 @@ Sources:
 - https://www.sama.gov.sa/en-US/MediaCenter/News/Pages/news-557.aspx
 - https://paymentservices.amazon.com/docs/developer-resources/signature
 - https://paymentservices.amazon.com/docs/api/managing-payments/check-status
+
+
+## Cancellation and cash refunds
+
+All paid terms can be cancelled anytime. A signed-in owner first reviews a server-calculated quote and explicitly confirms the displayed amount. Cancellation immediately removes the purchased term, its remaining credits and its recorded bundled-service inclusions. Other separately purchased terms and daily free credits are retained. An annotation in progress must finish or reconcile before cancellation to avoid reserving credits while a cash refund is calculated. External applications retain their own approval/deprovisioning processes.
+
+Refund eligibility includes **unused credits from the current paid allocation plus future paid allocations**. It excludes **all rolled-over credits, daily free credits, promotional credits and the final two free annual months**. On new annual purchases, allocations 1–10 are paid and 11–12 are promotional. Legacy purchases retain the paid allocation count implied by their original payment. Expired credits are not refundable. Refunds apply only to cancellation of a captured payment, not cash withdrawals of free credits.
+
+The formula is `floor(eligible credits / 100) × $0.50`, capped at the original payment. For example 3,950 eligible credits produce a $19.50 refund for 3,900 credits; fewer than 100 eligible credits produce no cash refund. An unused base Research annual term refunds $200 in its first paid month; in month two with an untouched first-month allocation rolled over, that rollover is excluded and the maximum becomes $180. No refund is available for promotional allocations in months 11–12.
+
+The wallet now keeps per-allocation credit buckets and consumes the oldest paid allocation first after daily credits. Failed annotations restore their original bucket. This prevents a refund from treating rolled-over credits as a current refundable allocation, including across a monthly boundary. Older aggregate wallets are reconstructed assuming oldest-allocation-first usage, preserving their existing balance.
+
+The quote stores both the USD refund and the refund in the original settlement currency. SAR refunds use the original payment conversion, rounded to the nearest integer halala and capped at the original SAR capture. The customer interface shows USD.
+
+Cancellation uses a Firestore transaction to freeze the refund quote and revoke credits. The request must confirm the current USD amount; stale quotes require review again. A persistent processing claim permits at most one automatic APS REFUND submission. Signed provider responses and an independent CHECK_STATUS confirm the refund amount. Duplicate clicks, late capture callbacks and retries do not grant credits again or issue a second refund. Ambiguous/failed provider attempts remain recorded for review; retries check the provider rather than blindly resubmitting money. Operational review is required if a process stops after claiming a refund or APS does not confirm it. Real card refunds have not been exercised; automated tests use a simulated provider.
+
+Customer-facing branding is VEP. Public source-repository links have been removed. Internal deployment names, secrets, database identifiers and compatibility API routes remain stable.

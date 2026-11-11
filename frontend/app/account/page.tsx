@@ -13,6 +13,11 @@ type Payment = {
   status: string;
   createdAt: number;
   termEnd: number | null;
+  cancellation?: {
+    status: string;
+    refundDollars: number;
+    refundableCredits: number;
+  } | null;
 };
 type Job = {
   id: string;
@@ -30,6 +35,16 @@ export default function Usage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]),
     [message, setMessage] = useState("");
+  const [cancelQuote, setCancelQuote] = useState<{
+    id: string;
+    currentPaidCredits: number;
+    futurePaidCredits: number;
+    excludedRolloverCredits: number;
+    refundableCredits: number;
+    usdCents: number;
+    refundDollars: number;
+  } | null>(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
   useEffect(() => {
     if (user?.emailVerified)
       api("/api/account")
@@ -41,6 +56,62 @@ export default function Usage() {
         })
         .catch((e) => setMessage(e.message));
   }, [user, api]);
+  async function reviewCancellation(id: string) {
+    setCancelBusy(true);
+    setMessage("");
+    try {
+      const r = await api(`/api/billing/cancel?id=${encodeURIComponent(id)}`);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      if (data.alreadyCancelled) {
+        setMessage("This subscription has already been cancelled.");
+        return;
+      }
+      setCancelQuote(data);
+    } catch (e) {
+      setMessage(
+        e instanceof Error ? e.message : "Unable to calculate the refund.",
+      );
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+  async function confirmCancellation() {
+    if (!cancelQuote) return;
+    setCancelBusy(true);
+    try {
+      const r = await api("/api/billing/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: cancelQuote.id,
+          expectedUsdCents: cancelQuote.usdCents,
+          confirm: true,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        if (data.code === "refund_quote_changed")
+          await reviewCancellation(cancelQuote.id);
+        throw new Error(data.error);
+      }
+      setMessage(
+        data.cancellation.status === "complete"
+          ? `Subscription cancelled. Refund confirmed: $${(data.cancellation.usdCents / 100).toFixed(2)}.`
+          : data.cancellation.status === "review"
+            ? "Subscription cancelled. Your refund requires payment review and has not yet been confirmed."
+            : "Subscription cancelled. Your refund is awaiting payment-provider confirmation. Use Check payment to refresh its status.",
+      );
+      setCancelQuote(null);
+      const latest = await api("/api/account").then((r) => r.json());
+      setPayments(latest.payments || []);
+      await refresh();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Unable to cancel.");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
   async function checkPayment(id: string) {
     try {
       const r = await api("/api/billing/reconcile", {
@@ -53,7 +124,13 @@ export default function Usage() {
       setMessage(
         d.status === "paid"
           ? "Payment confirmed. Refresh to see your subscription credits."
-          : "Payment is not confirmed yet. No credits have been granted.",
+          : d.status === "cancelled"
+            ? "Cancellation refund confirmed. Refresh to see the latest payment details."
+            : d.status === "refund_review"
+              ? "Your cancellation refund requires payment review. No refund has been confirmed yet."
+              : d.status === "refund_pending"
+                ? "Cancellation confirmed. The payment provider has not confirmed the refund yet."
+                : "Payment is not confirmed yet. No credits have been granted.",
       );
       await refresh();
     } catch (e) {
@@ -72,7 +149,7 @@ export default function Usage() {
       );
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fastvep-${id}.json`;
+      a.download = `vep-${id}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -175,8 +252,73 @@ export default function Usage() {
         <p>
           Each purchase covers one term. Annual terms release credits monthly;
           unused credits roll over until the annual term ends. Renew manually
-          after your term expires.
+          after your term expires. You can cancel anytime and request an
+          eligible paid-credit refund.
         </p>
+        {cancelQuote && (
+          <div
+            className="cancel-review"
+            role="region"
+            aria-label="Review cancellation"
+          >
+            <h3>Cancel subscription & review refund</h3>
+            <dl>
+              <div>
+                <dt>Unused current paid allocation</dt>
+                <dd>
+                  {cancelQuote.currentPaidCredits.toLocaleString()} credits
+                </dd>
+              </div>
+              <div>
+                <dt>Future paid allocations</dt>
+                <dd>
+                  {cancelQuote.futurePaidCredits.toLocaleString()} credits
+                </dd>
+              </div>
+              <div>
+                <dt>Rollover credits excluded</dt>
+                <dd>
+                  {cancelQuote.excludedRolloverCredits.toLocaleString()} credits
+                </dd>
+              </div>
+              <div>
+                <dt>Refundable credits, rounded down</dt>
+                <dd>
+                  {cancelQuote.refundableCredits.toLocaleString()} credits
+                </dd>
+              </div>
+              <div>
+                <dt>Refund to original payment method</dt>
+                <dd>${cancelQuote.refundDollars.toFixed(2)}</dd>
+              </div>
+            </dl>
+            <p>
+              Refunds use complete blocks of 100 eligible credits at $0.50 per
+              block, capped at the payment. Daily free, promotional and
+              rolled-over credits are excluded. Cancelling ends this paid term
+              and its remaining credits immediately. Daily free credits
+              continue.
+            </p>
+            <div className="cancel-actions">
+              <button
+                className="danger-button"
+                disabled={cancelBusy}
+                onClick={confirmCancellation}
+              >
+                {cancelBusy
+                  ? "Cancelling…"
+                  : `Confirm cancellation · $${cancelQuote.refundDollars.toFixed(2)} refund`}
+              </button>
+              <button
+                className="quiet"
+                disabled={cancelBusy}
+                onClick={() => setCancelQuote(null)}
+              >
+                Keep subscription
+              </button>
+            </div>
+          </div>
+        )}
         {payments.length ? (
           <div className="table-wrap">
             <table>
@@ -204,7 +346,15 @@ export default function Usage() {
                     <td>
                       ${(p.amount / 100).toFixed(2)} {p.currency}
                     </td>
-                    <td>{p.status}</td>
+                    <td>
+                      {p.status}
+                      {p.cancellation && (
+                        <small>
+                          ${p.cancellation.refundDollars.toFixed(2)} refund ·{" "}
+                          {p.cancellation.status}
+                        </small>
+                      )}
+                    </td>
                     <td>
                       <button
                         className="quiet"
@@ -212,6 +362,15 @@ export default function Usage() {
                       >
                         Check payment
                       </button>
+                      {p.status === "paid" && (
+                        <button
+                          className="quiet cancel-link"
+                          disabled={cancelBusy}
+                          onClick={() => reviewCancellation(p.id)}
+                        >
+                          Cancel & refund
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

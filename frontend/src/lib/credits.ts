@@ -101,7 +101,9 @@ export type Entitlement = {
   planId?: string;
   tier?: "research" | "clinical";
   monthlyCredits?: number;
+  paidAllocationMonths?: number;
 };
+export type CreditBucket = { index: number; remainingUnits: number };
 export type Wallet = {
   dailyDate: string;
   dailyRemaining: number;
@@ -110,6 +112,8 @@ export type Wallet = {
   paidRemaining: number;
   paidExpiresAt: number | null;
   paidAllocationCount?: number;
+  creditBuckets?: CreditBucket[];
+  bucketPaymentId?: string;
   entitlement: Entitlement | null;
   queuedEntitlements?: Entitlement[];
 };
@@ -157,6 +161,8 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
     next.paidRemaining = 0;
     next.paidExpiresAt = null;
     next.paidAllocationCount = 0;
+    next.creditBuckets = [];
+    next.bucketPaymentId = "";
     return next;
   }
   let offset = 0;
@@ -204,6 +210,27 @@ export function normalizeWallet(wallet: Wallet, now: number): Wallet {
     next.paidAllocationCount = 1;
     next.paidExpiresAt = end;
   }
+  const quota = units(entitlement.monthlyCredits ?? MONTHLY_CREDITS);
+  const issued = entitlement.cadence === "annual" ? offset + 1 : 1;
+  let buckets =
+    next.bucketPaymentId === entitlement.paymentId
+      ? (next.creditBuckets || []).map((b) => ({ ...b }))
+      : [];
+  for (let index = buckets.length; index < issued; index++)
+    buckets.push({ index, remainingUnits: quota });
+  if (
+    buckets.reduce((sum, b) => sum + b.remainingUnits, 0) !== next.paidRemaining
+  ) {
+    // Preserve existing aggregate usage when migrating older wallets to allocation buckets.
+    let spent = Math.max(0, quota * issued - next.paidRemaining);
+    buckets = Array.from({ length: issued }, (_, index) => {
+      const used = Math.min(quota, spent);
+      spent -= used;
+      return { index, remainingUnits: quota - used };
+    });
+  }
+  next.creditBuckets = buckets;
+  next.bucketPaymentId = entitlement.paymentId;
   return next;
 }
 export type Debit = {
@@ -212,6 +239,7 @@ export type Debit = {
   freeUnits: number;
   paidUnits: number;
   totalUnits: number;
+  buckets?: { index: number; units: number }[];
 };
 export function debitWallet(
   wallet: Wallet,
@@ -227,11 +255,20 @@ export function debitWallet(
     );
   const freeUnits = Math.min(wallet.dailyRemaining, amount),
     paidUnits = amount - freeUnits;
+  let remaining = paidUnits;
+  const bucketDebits: { index: number; units: number }[] = [];
+  const buckets = wallet.creditBuckets?.map((bucket) => {
+    const used = Math.min(bucket.remainingUnits, remaining);
+    remaining -= used;
+    if (used) bucketDebits.push({ index: bucket.index, units: used });
+    return { ...bucket, remainingUnits: bucket.remainingUnits - used };
+  });
   return {
     wallet: {
       ...wallet,
       dailyRemaining: wallet.dailyRemaining - freeUnits,
       paidRemaining: wallet.paidRemaining - paidUnits,
+      ...(buckets ? { creditBuckets: buckets } : {}),
     },
     debit: {
       dailyDate: wallet.dailyDate,
@@ -239,12 +276,24 @@ export function debitWallet(
       freeUnits,
       paidUnits,
       totalUnits: amount,
+      buckets: bucketDebits,
     },
   };
 }
 export function refundWallet(wallet: Wallet, debit: Debit): Wallet {
+  const restorePaid =
+    !!wallet.paidWindow && wallet.paidWindow === debit.paidWindow;
+  const buckets = wallet.creditBuckets?.map((bucket) => ({
+    ...bucket,
+    remainingUnits:
+      bucket.remainingUnits +
+      (restorePaid
+        ? debit.buckets?.find((b) => b.index === bucket.index)?.units || 0
+        : 0),
+  }));
   return {
     ...wallet,
+    ...(buckets ? { creditBuckets: buckets } : {}),
     dailyRemaining:
       wallet.dailyRemaining +
       (wallet.dailyDate === debit.dailyDate ? debit.freeUnits : 0),

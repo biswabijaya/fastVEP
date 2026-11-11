@@ -49,7 +49,7 @@ export async function GET(
       headers: {
         "Content-Type": "application/json",
         "Cache-Control": "private, no-store",
-        "Content-Disposition": `attachment; filename="fastvep-${id}.json"`,
+        "Content-Disposition": `attachment; filename="vep-${id}.json"`,
       },
     });
   } catch (error) {

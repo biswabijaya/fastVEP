@@ -39,6 +39,14 @@ export async function GET(request: Request) {
             status: p.status,
             createdAt: p.createdAt,
             termEnd: p.termEnd || null,
+            cancellation: p.cancellation
+              ? {
+                  status: p.cancellation.status,
+                  refundDollars: p.cancellation.usdCents / 100,
+                  refundableCredits: p.cancellation.refundableCredits,
+                  at: p.cancellation.at,
+                }
+              : null,
           };
         }),
       },

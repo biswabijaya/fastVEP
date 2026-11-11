@@ -12,7 +12,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link className="brand" href="/">
           <img src="/enigma-e.svg" width="30" height="30" alt="" />
           <span>
-            fastVEP<small>ENIGMA GENOMICS</small>
+            VEP<small>ENIGMA GENOMICS</small>
           </span>
         </Link>
         <nav aria-label="Main navigation">
@@ -49,9 +49,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
       <main key={user?.uid || "guest"}>{children}</main>
       <footer>
-        <span>fastVEP · Enigma Genomics</span>
+        <span>VEP · Enigma Genomics</span>
         <span>GRCh38 · Ensembl 115 · ClinVar</span>
-        <a href="https://github.com/biswabijaya/fastVEP">Source ↗</a>
       </footer>
     </>
   );

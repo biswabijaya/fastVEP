@@ -1,3 +1,4 @@
+import type { CancellationRecord } from "../lib/refunds";
 import { findPlan, type PaidTier } from "../lib/plans";
 import { paymentPrice } from "./payment-pricing";
 import { randomUUID } from "node:crypto";
@@ -27,11 +28,13 @@ export type Invoice = {
   planId?: string;
   tier?: PaidTier;
   monthlyCredits?: number;
+  paidAllocationMonths?: number;
+  cancellation?: CancellationRecord;
   amount: number;
   currency: "USD" | "SAR";
   displayAmount?: number;
   displayCurrency?: "USD";
-  status: "pending" | "paid" | "refunded";
+  status: "pending" | "paid" | "refunded" | "cancelled";
   createdAt: number;
   fortId?: string;
   paidAt?: number;
@@ -88,6 +91,7 @@ export async function prepareCheckout(
         planId: plan.id,
         tier: plan.tier,
         monthlyCredits: plan.monthlyCredits,
+        paidAllocationMonths: cadence === "annual" ? 10 : 1,
         ...paymentPrice(cadence, plan.id),
         status: "pending",
         createdAt: Date.now(),
@@ -109,7 +113,7 @@ export async function prepareCheckout(
         currency: invoice.currency,
         customer_email: user.email,
         return_url: `${canonicalOrigin}/api/billing/callback`,
-        order_description: `fastVEP ${plan.name} ${plan.monthlyCredits} credits monthly - ${cadence} manual renewal`,
+        order_description: `VEP ${plan.name} ${plan.monthlyCredits} credits monthly - ${cadence} manual renewal`,
       },
       config,
     ),
@@ -132,7 +136,7 @@ export async function applyCapturedInvoice(
     const account = accountSnapshot.data() as Account;
     const captureRef = database().collection("paymentCaptures").doc(fortId);
     const capture = await tx.get(captureRef);
-    if (invoice.status === "paid") {
+    if (invoice.status === "paid" || invoice.status === "cancelled") {
       if (invoice.fortId !== fortId)
         throw new ServiceError(409, "Payment reference conflict.");
       return false;
@@ -159,6 +163,19 @@ export async function applyCapturedInvoice(
       planId: invoice.planId || "research-20",
       tier: invoice.tier || "research",
       monthlyCredits: invoice.monthlyCredits ?? 4000,
+      paidAllocationMonths:
+        invoice.paidAllocationMonths ??
+        Math.min(
+          invoice.cadence === "annual" ? 12 : 1,
+          Math.round(
+            ((invoice.displayAmount ??
+              (invoice.currency === "USD"
+                ? invoice.amount
+                : (invoice.amount * 4) / 15)) *
+              2) /
+              (invoice.monthlyCredits ?? 4000),
+          ),
+        ),
     };
     if (start > now)
       account.wallet.queuedEntitlements = [...future, entitlement];
@@ -238,6 +255,15 @@ export async function confirmPayment(fields: Fields) {
   if (!snapshot.exists)
     throw new ServiceError(404, "Payment reference not found.");
   const invoice = snapshot.data() as Invoice;
+  if (invoice.status === "cancelled") {
+    const { reconcileCancellation } = await import("./cancellations");
+    const result = await reconcileCancellation(invoice.id);
+    return result.status === "complete"
+      ? "cancelled"
+      : result.status === "review"
+        ? "refund_review"
+        : "refund_pending";
+  }
   if (
     fields.currency !== invoice.currency ||
     !/^\d+$/.test(fields.amount || "") ||
@@ -264,6 +290,15 @@ export async function reconcileInvoice(user: Identity, id: string) {
   const invoice = snapshot.data() as Invoice | undefined;
   if (!invoice || invoice.uid !== user.uid)
     throw new ServiceError(404, "Payment not found.");
+  if (invoice.status === "cancelled") {
+    const { reconcileCancellation } = await import("./cancellations");
+    const result = await reconcileCancellation(id);
+    return result.status === "complete"
+      ? "cancelled"
+      : result.status === "review"
+        ? "refund_review"
+        : "refund_pending";
+  }
   const config = await apsConfig(),
     check = await checkPayment(id, config);
   if (Number(check.refunded_amount || 0) > 0) {

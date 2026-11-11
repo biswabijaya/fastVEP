@@ -1023,3 +1023,60 @@ footer a {
 .plans-three .free-plan .button {
   margin-top: 0;
 }
+.cancel-review {
+  margin: 20px 0;
+  padding: 22px;
+  border: 1px solid var(--border);
+  background: var(--subtle);
+  border-radius: 6px;
+}
+.cancel-review dl {
+  margin: 18px 0;
+}
+.cancel-review dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.cancel-review dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 500;
+}
+.cancel-review p {
+  font-size: 12px;
+}
+.cancel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.danger-button {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+.danger-button:hover {
+  background: #8f1d15;
+  color: white;
+}
+.cancel-link {
+  color: var(--danger);
+}
+@media (max-width: 550px) {
+  .cancel-review {
+    padding: 16px;
+  }
+  .cancel-review dl > div {
+    font-size: 12px;
+  }
+  .cancel-actions {
+    flex-direction: column;
+  }
+  .cancel-actions button {
+    width: 100%;
+  }
+}

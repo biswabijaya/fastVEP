@@ -7,7 +7,7 @@ import "./style.css";
 import { Session } from "../src/components/Session";
 import { Shell } from "../src/components/Shell";
 export const metadata: Metadata = {
-  title: "fastVEP | Enigma Genomics",
+  title: "VEP | Enigma Genomics",
   description: "Variant consequence annotation with transparent usage credits",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {

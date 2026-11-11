@@ -143,3 +143,58 @@ export function capturedPayment(check: Fields, amount: number) {
     /^\d+$/.test(check.fort_id || "")
   );
 }
+
+export async function refundPayment(
+  reference: string,
+  fortId: string,
+  amount: number,
+  currency: string,
+  maintenanceReference: string,
+  config: ApsConfig,
+) {
+  const url =
+    process.env.FASTVEP_APS_MODE === "sandbox"
+      ? "https://sbpaymentservices.payfort.com/FortAPI/paymentApi"
+      : "https://paymentservices.payfort.com/FortAPI/paymentApi";
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      signedRequest(
+        {
+          command: "REFUND",
+          merchant_reference: reference,
+          fort_id: fortId,
+          amount: String(amount),
+          currency,
+          maintenance_reference: maintenanceReference,
+          order_description: "VEP subscription cancellation refund",
+        },
+        config,
+      ),
+    ),
+    signal: AbortSignal.timeout(20000),
+    cache: "no-store",
+  });
+  if (!response.ok)
+    throw new ServiceError(
+      503,
+      "The refund is awaiting payment-provider confirmation.",
+    );
+  const fields = parseFields(await response.json());
+  if (
+    !verifySignature(fields, config.responsePhrase) ||
+    fields.command !== "REFUND" ||
+    fields.merchant_identifier !== config.merchant ||
+    fields.merchant_reference !== reference ||
+    fields.fort_id !== fortId ||
+    fields.maintenance_reference !== maintenanceReference ||
+    fields.currency !== currency ||
+    Number(fields.amount) !== amount ||
+    fields.response_code !== "06000"
+  )
+    throw new ServiceError(
+      503,
+      "The refund is awaiting payment-provider confirmation.",
+    );
+}

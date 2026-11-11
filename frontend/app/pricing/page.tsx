@@ -88,8 +88,7 @@ export default function Pricing() {
       options = isClinical ? CLINICAL_PLANS : RESEARCH_PLANS,
       id = isClinical ? clinical : research,
       plan = options.find((p) => p.id === id)!;
-    const billed = planDollars(plan, cadence),
-      equivalent = annual ? billed / 12 : billed;
+    const billed = planDollars(plan, cadence);
     return (
       <section
         className={`panel plan ${isClinical ? "clinical-plan" : "featured"}`}
@@ -109,8 +108,8 @@ export default function Pricing() {
           </p>
         </div>
         <div className="price">
-          {dollars(equivalent)}
-          <small> / month</small>
+          {dollars(billed)}
+          <small> / {annual ? "year" : "month"}</small>
         </div>
         <p className="billing-detail">
           {annual
@@ -133,10 +132,8 @@ export default function Pricing() {
             {options.map((p) => (
               <option value={p.id} key={p.id}>
                 {p.monthlyCredits.toLocaleString()} credits / month —{" "}
-                {dollars(
-                  annual ? planDollars(p, "annual") / 12 : p.monthlyDollars,
-                )}
-                /month
+                {dollars(annual ? planDollars(p, "annual") : p.monthlyDollars)}/
+                {annual ? "year" : "month"}
               </option>
             ))}
           </select>
@@ -180,6 +177,7 @@ export default function Pricing() {
               ? "Unused paid credits roll over monthly; all expire at the end of your annual term"
               : "Unused paid credits expire at the end of your monthly term"}
           </li>
+          <li>Cancel anytime · eligible paid-credit refunds</li>
           <li>Private annotation results and usage history</li>
           {isClinical ? (
             <>
@@ -223,7 +221,7 @@ export default function Pricing() {
   return (
     <>
       <div className="pricing-heading">
-        <span className="eyebrow">FASTVEP / ENIGMA GENOMICS</span>
+        <span className="eyebrow">VEP / ENIGMA GENOMICS</span>
         <h1>A plan for every stage of discovery</h1>
         <p>
           Start free, scale your research, or bring your clinical workflow
@@ -239,7 +237,8 @@ export default function Pricing() {
         </div>
         {annual && (
           <p className="annual-note">
-            Pay for 10 months. Get a full year. Credits are released each month.
+            Pay for 10 months of use. Get 2 additional months free. Credits are
+            released monthly.
           </p>
         )}
       </div>
@@ -349,14 +348,23 @@ export default function Pricing() {
           months, and all expire together when the purchased annual term ends.
         </p>
         <p>
-          Annual plans cost ten monthly payments for twelve months of access and
-          credit allocations. All subscriptions renew manually. Credits cannot
-          be redeemed for cash.
+          Annual plans are paid upfront at 10 times the monthly price and
+          include 2 additional months free, for twelve months of access and
+          credit allocations. All subscriptions renew manually and can be
+          cancelled anytime.
         </p>
         <p>
           Credits are reserved when a batch starts. If annotation fails,
           unexpired credits are returned. Reopening a completed batch within 24
           hours does not charge again.
+        </p>
+        <p>
+          Cancellation refunds include unused credits from the current paid
+          allocation and future paid allocations. Rollover credits, daily free
+          credits and the two promotional months are excluded. Refunds are
+          calculated in complete blocks of 100 eligible credits at $0.50 per
+          block, capped at the amount paid. Cancelling ends the paid term and
+          its remaining credits immediately.
         </p>
       </section>
     </>

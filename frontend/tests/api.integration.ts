@@ -103,6 +103,7 @@ test("server routes enforce sign-in and verified identity", async () => {
   for (const path of [
     "/api/account",
     "/api/fastvep/status",
+    "/api/billing/cancel?id=fv-11111111111111111111111111111111",
     "/api/jobs/aaaaaaaaaaaaaaaa",
   ])
     assert.equal((await fetch(base + path)).status, 401);

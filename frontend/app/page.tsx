@@ -145,7 +145,7 @@ function Workspace() {
         setGenomes(g.genomes || []);
         setGenome(g.default || g.genomes?.[0]?.name || "");
         setAvailable(true);
-        setStatus(`Ready · fastVEP ${data.version}`);
+        setStatus(`Ready · VEP ${data.version}`);
       } catch (e) {
         if (!controller.signal.aborted)
           setStatus(
@@ -237,7 +237,7 @@ function Workspace() {
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = "fastvep-results.json";
+    a.download = "vep-results.json";
     a.click();
     URL.revokeObjectURL(url);
   }

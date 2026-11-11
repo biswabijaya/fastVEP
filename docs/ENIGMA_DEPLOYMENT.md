@@ -7,7 +7,7 @@ to `biswabijaya/fastVEP` and `refs/heads/prod-enigma`. No Google key is stored i
 
 - Firebase project: `enigmagenomics`
 - App Hosting backend: `fastvep`, region `us-central1`
-- Product display name: fastVEP
+- Product display name: VEP
 - Domain: `fastvep.enigmagenomics.com`
 - Frontend root: `frontend`
 - Engine: native Rust on Cloud Run, private invocation by the App Hosting service account
@@ -80,3 +80,5 @@ Java 21+ is required for these emulators. Tests use only synthetic demo accounts
 Develop and push to `biswa`; promote deliberately to `prod-enigma` to roll out. See `PRICING_MODEL.md` for confirmed credit terms, the proposed usage tariff, cost assumptions and payment validation still needed.
 
 The three-tier catalog is in `frontend/src/lib/plans.ts`. Annual purchases cost ten monthly payments and issue twelve monthly credit allocations. Clinical billing inclusions (Clinical, Reporting, AI) are returned by the authenticated account API; cross-application sign-in/approval and automatic provisioning are separate from billing and remain subject to the existing applications’ controls.
+
+Cancellation/refund policy and per-allocation tracking are documented in `PRICING_MODEL.md`. Refund submissions use durable transaction state, a one-time provider claim, and signed provider status reconciliation. Review records needing operator attention before broad paid launch; real refunds have not been exercised by these tests. Annual-mode UI shows full yearly totals, not monthly equivalents.
