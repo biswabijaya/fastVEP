@@ -18,6 +18,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <nav aria-label="Main navigation">
           {[
             ["/", "Annotate"],
+            ["/projects", "Projects"],
             ["/pricing", "Pricing"],
             ["/account", "Usage"],
           ].map(([href, label]) => (

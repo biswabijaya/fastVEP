@@ -176,3 +176,17 @@ test.after(async () => {
   app?.kill("SIGTERM");
   await new Promise<void>((resolve) => engine.close(() => resolve()));
 });
+
+test("projects are owner scoped and concurrent creation enforces the free project cap", async () => {
+  assert.equal((await fetch(`${base}/api/projects`)).status, 401);
+  const responses = await Promise.all(Array.from({ length: 5 }, (_, i) => request("/api/projects", { name: `Study ${i}` })));
+  assert.equal(responses.filter((response) => response.status === 201).length, 3);
+  assert.equal(responses.filter((response) => response.status === 403).length, 2);
+  const mine = await (await request("/api/projects")).json();
+  assert.equal(mine.projects.length, 3);
+  assert.equal(mine.capabilities.uploads, false);
+  assert.equal(mine.capabilities.runs, false);
+  const theirs = await (await request("/api/projects", undefined, undefined, otherToken)).json();
+  assert.equal(theirs.projects.length, 0);
+  assert.equal((await request("/api/projects", { name: " " }, undefined, otherToken)).status, 400);
+});
